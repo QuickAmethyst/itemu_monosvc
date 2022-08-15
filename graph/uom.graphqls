@@ -1,0 +1,29 @@
+extend type Query {
+    uoms(input: UomsInput): UomsResult!
+}
+
+extend type Mutation {
+    storeUom(input: WriteUomInput!): Uom!
+}
+
+input UomsInput {
+    paging: PagingInput
+}
+
+input WriteUomInput {
+    name: String!
+    description: String
+    decimal: Int
+}
+
+type Uom {
+    id: ID!
+    name: String!
+    description: String
+    decimal: Int
+}
+
+type UomsResult {
+    data: [Uom!]!
+    paging: Paging!
+}

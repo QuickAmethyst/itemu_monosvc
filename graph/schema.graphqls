@@ -1,0 +1,13 @@
+type Query
+type Mutation
+
+input PagingInput {
+  currentPage: Uint!
+  pageSize: Uint!
+}
+
+type Paging {
+  currentPage: Uint!
+  pageSize: Uint!
+  total: Uint!
+}

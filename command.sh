@@ -1,0 +1,1 @@
+docker run --rm --network host -v ${PWD}:/usr/src/app migrate/migrate -database "postgres://postgres:postgres@localhost:5432/monosvc_inventory?sslmode=disable" -path /usr/src/app/module/inventory/migration up
