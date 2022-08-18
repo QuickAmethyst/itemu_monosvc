@@ -12,3 +12,4 @@ const (
 
 var PropagateWithCode = stacktrace.PropagateWithCode
 var Propagate = stacktrace.Propagate
+var GetCode = stacktrace.GetCode

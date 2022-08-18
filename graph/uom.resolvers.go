@@ -5,6 +5,7 @@ package graph
 
 import (
 	"context"
+
 	"github.com/QuickAmethyst/monosvc/graph/model"
 	"github.com/QuickAmethyst/monosvc/module/inventory/domain"
 	inventorySql "github.com/QuickAmethyst/monosvc/module/inventory/repository/sql"

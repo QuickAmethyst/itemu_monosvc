@@ -21,10 +21,14 @@ coverage-visual: coverage
 	go tool cover -html=coverage.out
 
 kill-process:
-	lsof -i :8080 | awk '/app/ {print $2}' | xargs kill
+	lsof -i :8080 | awk '/app/ {print $$2}' | xargs kill
 
 run: kill-process
 	./build/app
 
 graph-generate:
 	go run github.com/99designs/gqlgen generate
+
+migrate:
+	docker run --rm --network host -v ${PWD}:/usr/src/app migrate/migrate -database "postgres://postgres:postgres@localhost:5432/monosvc_inventory?sslmode=disable" -path /usr/src/app/module/inventory/migration up
+	docker run --rm --network host -v ${PWD}:/usr/src/app migrate/migrate -database "postgres://postgres:postgres@localhost:5432/monosvc_account?sslmode=disable" -path /usr/src/app/module/account/migration up

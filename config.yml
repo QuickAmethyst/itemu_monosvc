@@ -1,5 +1,46 @@
 Development: true
 
+Redis:
+  # Only for Sentinel
+  MasterName: ""
+  Password: "redis"
+  Addrs:
+    - "localhost:6378"
+  # single node and sentinel
+  DB: "0"
+  MaxRetries: 2
+  MinRetryBackoff: 1s
+  MaxRetryBackoff: 2s
+  DialTimeout: 5s
+  ReadTimeout: 2s
+  WriteTimeout: 2s
+  PoolSize: 50
+  MinIdleConns: 1
+  PoolTimeout: 60s
+  # Cluster Client Only
+  MaxRedirects: "3"
+  ReadOnly: true
+  RouteByLatency: true
+  RouteRandomly: true
+  ConnMaxLifetime: 5m
+  ConnMaxIdleTime: 60s
+
+AccountDatabase:
+  master:
+    host: "localhost"
+    port: 5432
+    user: "postgres"
+    password: "postgres"
+    databaseName: "monosvc_account"
+    ssl: false
+  slave:
+    host: "localhost"
+    port: 5432
+    user: "postgres"
+    password: "postgres"
+    databaseName: "monosvc_account"
+    ssl: false
+
 InventoryDatabase:
   master:
     host: "localhost"
@@ -20,7 +61,7 @@ HttpServer:
   address: "localhost:8080"
   readHeaderTimeout: 1s
   readTimeout: 2s
-  writeTimeout: 2s
+  writeTimeout: 4200ms
   idleTimeout: 1s
 
 HttpCors:

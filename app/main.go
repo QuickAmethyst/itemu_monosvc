@@ -2,13 +2,17 @@ package main
 
 import (
 	"context"
-	"fmt"
+	accountUC "github.com/QuickAmethyst/monosvc/module/account/usecase"
 	inventoryUC "github.com/QuickAmethyst/monosvc/module/inventory/usecase"
+	"github.com/QuickAmethyst/monosvc/stdlibgo/auth"
 	"github.com/QuickAmethyst/monosvc/stdlibgo/sql"
+	"github.com/go-redis/redis/v9"
+	"time"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/QuickAmethyst/monosvc/graph"
 	"github.com/QuickAmethyst/monosvc/graph/generated"
+	accountSql "github.com/QuickAmethyst/monosvc/module/account/repository/sql"
 	inventorySql "github.com/QuickAmethyst/monosvc/module/inventory/repository/sql"
 	sdkGraphql "github.com/QuickAmethyst/monosvc/stdlibgo/graphql"
 	"go.uber.org/zap"
@@ -34,7 +38,9 @@ var (
 	rest               http.Http
 	stdLog             *log.Logger
 	graphES            graphql.ExecutableSchema
+	redisClient        redis.UniversalClient
 	inventorySqlClient sql.PostgresSQL
+	accountSqlClient   sql.PostgresSQL
 	resolver           graph.Resolver
 )
 
@@ -69,27 +75,50 @@ func initDB() {
 		logger.Fatal(err.Error())
 	}
 
-	if err = inventorySqlClient.Master().PingContext(context.Background()); err != nil {
+	if accountSqlClient, err = sql.NewPostgresSQL(conf.AccountDatabase); err != nil {
 		logger.Fatal(err.Error())
 	}
 }
 
+func initRedis() {
+	redisClient = redis.NewUniversalClient(&conf.Redis)
+}
+
 func initResolver() {
-	inventorySqlInstance := inventorySql.New(&inventorySql.Options{
+	accountSQLRepo := accountSql.New(&accountSql.Options{
+		MasterDB: accountSqlClient.Master(),
+		SlaveDB:  accountSqlClient.Slave(),
+		Logger:   logger,
+	})
+
+	inventorySQLRepo := inventorySql.New(&inventorySql.Options{
 		MasterDB: inventorySqlClient.Master(),
 		SlaveDB:  inventorySqlClient.Slave(),
 		Logger:   logger,
 	})
 
+	authClient, err := auth.New(&auth.Options{
+		Redis:                redisClient,
+		PublicKeyPath:        "etc/rsa/public.pem",
+		PrivateKeyPath:       "etc/rsa/private.pem",
+		AccessTokenDuration:  1 * time.Hour,
+		RefreshTokenDuration: 30 * 24 * time.Hour,
+	})
+
+	if err != nil {
+		logger.Fatal(err.Error())
+	}
+
 	resolver = graph.Resolver{
-		Logger: logger,
-		InventoryUsecase: inventoryUC.New(&inventoryUC.Options{InventorySQL: inventorySqlInstance}),
+		Logger:           logger,
+		InventoryUsecase: inventoryUC.New(&inventoryUC.Options{InventorySQL: inventorySQLRepo}),
+		AccountUsecase:   accountUC.New(&accountUC.Options{AccountSQL: accountSQLRepo, Auth: authClient}),
 	}
 }
 
 func initGraph() {
 	graphES = generated.NewExecutableSchema(generated.Config{Resolvers: &resolver})
-	fmt.Printf("%+v", conf.HttpCors)
+
 	rest = http.New(http.Options{Cors: &conf.HttpCors})
 
 	graphqlH, playgroundH := sdkGraphql.New(graphES, sdkGraphql.Options{Development: conf.Development})
@@ -106,6 +135,7 @@ func init() {
 
 	initLogger()
 	initConf()
+	initRedis()
 	initDB()
 	initResolver()
 	initGraph()

@@ -1,6 +1,7 @@
 package graph
 
 import (
+	accountUC "github.com/QuickAmethyst/monosvc/module/account/usecase"
 	inventoryUC "github.com/QuickAmethyst/monosvc/module/inventory/usecase"
 	"github.com/QuickAmethyst/monosvc/stdlibgo/logger"
 )
@@ -12,4 +13,5 @@ import (
 type Resolver struct {
 	Logger           logger.Logger
 	InventoryUsecase inventoryUC.Usecase
+	AccountUsecase   accountUC.Usecase
 }

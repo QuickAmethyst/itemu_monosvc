@@ -10,7 +10,7 @@ type DB interface {
 	Stats() sql.DBStats
 	Close() error
 	SelectContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
-	QueryContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
+	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
 	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
 	PrepareContext(ctx context.Context, query string) (*sqlx.Stmt, error)
 	Rebind(query string) string
@@ -35,11 +35,11 @@ func (d *db) PrepareContext(ctx context.Context, query string) (*sqlx.Stmt, erro
 }
 
 func (d *db) QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row {
-	return d.db.QueryRowContext(ctx, query, args)
+	return d.db.QueryRowContext(ctx, query, args...)
 }
 
-func (d *db) QueryContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
-	return d.db.QueryxContext(ctx, query, args)
+func (d *db) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+	return d.db.QueryContext(ctx, query, args)
 }
 
 func (d *db) PingContext(ctx context.Context) error {

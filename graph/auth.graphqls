@@ -1,0 +1,16 @@
+extend type Mutation {
+    signIn(input: SignInInput!): Credential!
+    refreshCredential(input: String!): Credential!
+}
+
+input SignInInput {
+    email: String!
+    password: String!
+}
+
+type Credential {
+    accessToken: String!
+    refreshToken: String!
+    accessExpire: Int!
+    refreshExpire: Int!
+}

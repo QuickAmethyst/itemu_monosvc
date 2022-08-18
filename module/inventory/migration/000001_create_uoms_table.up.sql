@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS uoms
     name        TEXT UNIQUE NOT NULL,
     description TEXT,
     decimal     INTEGER     NOT NULL,
-    created_at  timestamp with time zone DEFAULT now(),
-    updated_at  timestamp with time zone,
-    deleted_at  timestamp with time zone
+    created_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMP WITH TIME ZONE,
+    deleted_at  TIMESTAMP WITH TIME ZONE
 );
