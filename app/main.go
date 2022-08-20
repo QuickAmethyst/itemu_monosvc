@@ -2,16 +2,16 @@ package main
 
 import (
 	"context"
+	"github.com/QuickAmethyst/monosvc/graph/generated"
 	accountUC "github.com/QuickAmethyst/monosvc/module/account/usecase"
 	inventoryUC "github.com/QuickAmethyst/monosvc/module/inventory/usecase"
-	"github.com/QuickAmethyst/monosvc/stdlibgo/auth"
+	sdkAuth "github.com/QuickAmethyst/monosvc/stdlibgo/auth"
 	"github.com/QuickAmethyst/monosvc/stdlibgo/sql"
 	"github.com/go-redis/redis/v9"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/QuickAmethyst/monosvc/graph"
-	"github.com/QuickAmethyst/monosvc/graph/generated"
 	accountSql "github.com/QuickAmethyst/monosvc/module/account/repository/sql"
 	inventorySql "github.com/QuickAmethyst/monosvc/module/inventory/repository/sql"
 	sdkGraphql "github.com/QuickAmethyst/monosvc/stdlibgo/graphql"
@@ -42,6 +42,7 @@ var (
 	inventorySqlClient sql.PostgresSQL
 	accountSqlClient   sql.PostgresSQL
 	resolver           graph.Resolver
+	auth               sdkAuth.Auth
 )
 
 func initConf() {
@@ -97,7 +98,7 @@ func initResolver() {
 		Logger:   logger,
 	})
 
-	authClient, err := auth.New(&auth.Options{
+	auth, err = sdkAuth.New(&sdkAuth.Options{
 		Redis:                redisClient,
 		PublicKeyPath:        "etc/rsa/public.pem",
 		PrivateKeyPath:       "etc/rsa/private.pem",
@@ -112,15 +113,16 @@ func initResolver() {
 	resolver = graph.Resolver{
 		Logger:           logger,
 		InventoryUsecase: inventoryUC.New(&inventoryUC.Options{InventorySQL: inventorySQLRepo}),
-		AccountUsecase:   accountUC.New(&accountUC.Options{AccountSQL: accountSQLRepo, Auth: authClient}),
+		AccountUsecase:   accountUC.New(&accountUC.Options{AccountSQL: accountSQLRepo, Auth: auth}),
 	}
 }
 
 func initGraph() {
-	graphES = generated.NewExecutableSchema(generated.Config{Resolvers: &resolver})
+	c := generated.Config{Resolvers: &resolver}
+	c.Directives.Authenticated = sdkGraphql.AuthenticatedDirective(auth)
 
+	graphES = generated.NewExecutableSchema(c)
 	rest = http.New(http.Options{Cors: &conf.HttpCors})
-
 	graphqlH, playgroundH := sdkGraphql.New(graphES, sdkGraphql.Options{Development: conf.Development})
 
 	rest.Handle(http.MethodGet, "/graphql", playgroundH)

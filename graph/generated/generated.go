@@ -41,6 +41,7 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
+	Authenticated func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 }
 
 type ComplexityRoot struct {
@@ -55,6 +56,7 @@ type ComplexityRoot struct {
 		RefreshCredential func(childComplexity int, input string) int
 		SignIn            func(childComplexity int, input model.SignInInput) int
 		StoreUom          func(childComplexity int, input model.WriteUomInput) int
+		UpdateUom         func(childComplexity int, id int, input model.WriteUomInput) int
 	}
 
 	Paging struct {
@@ -84,6 +86,7 @@ type MutationResolver interface {
 	SignIn(ctx context.Context, input model.SignInInput) (*model.Credential, error)
 	RefreshCredential(ctx context.Context, input string) (*model.Credential, error)
 	StoreUom(ctx context.Context, input model.WriteUomInput) (*model.Uom, error)
+	UpdateUom(ctx context.Context, id int, input model.WriteUomInput) (*model.Uom, error)
 }
 type QueryResolver interface {
 	Uoms(ctx context.Context, input *model.UomsInput) (*model.UomsResult, error)
@@ -167,6 +170,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.StoreUom(childComplexity, args["input"].(model.WriteUomInput)), true
+
+	case "Mutation.updateUom":
+		if e.complexity.Mutation.UpdateUom == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateUom_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateUom(childComplexity, args["id"].(int), args["input"].(model.WriteUomInput)), true
 
 	case "Paging.currentPage":
 		if e.complexity.Paging.CurrentPage == nil {
@@ -332,6 +347,8 @@ type Credential {
     refreshExpire: Int!
 }
 `, BuiltIn: false},
+	{Name: "../directive.graphqls", Input: `"Prevents access to a field if not authenticated"
+directive @authenticated on FIELD_DEFINITION`, BuiltIn: false},
 	{Name: "../scalar.graphqls", Input: `scalar Uint
 scalar Upload`, BuiltIn: false},
 	{Name: "../schema.graphqls", Input: `type Query
@@ -349,11 +366,12 @@ type Paging {
 }
 `, BuiltIn: false},
 	{Name: "../uom.graphqls", Input: `extend type Query {
-    uoms(input: UomsInput): UomsResult!
+    uoms(input: UomsInput): UomsResult! @authenticated
 }
 
 extend type Mutation {
-    storeUom(input: WriteUomInput!): Uom!
+    storeUom(input: WriteUomInput!): Uom! @authenticated
+    updateUom(id: Int!, input: WriteUomInput!): Uom! @authenticated
 }
 
 input UomsInput {
@@ -427,6 +445,30 @@ func (ec *executionContext) field_Mutation_storeUom_args(ctx context.Context, ra
 		}
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateUom_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	var arg1 model.WriteUomInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg1, err = ec.unmarshalNWriteUomInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐWriteUomInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg1
 	return args, nil
 }
 
@@ -817,8 +859,28 @@ func (ec *executionContext) _Mutation_storeUom(ctx context.Context, field graphq
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().StoreUom(rctx, fc.Args["input"].(model.WriteUomInput))
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutation().StoreUom(rctx, fc.Args["input"].(model.WriteUomInput))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.Authenticated == nil {
+				return nil, errors.New("directive authenticated is not implemented")
+			}
+			return ec.directives.Authenticated(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.Uom); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/QuickAmethyst/monosvc/graph/model.Uom`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -863,6 +925,91 @@ func (ec *executionContext) fieldContext_Mutation_storeUom(ctx context.Context, 
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_storeUom_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateUom(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateUom(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutation().UpdateUom(rctx, fc.Args["id"].(int), fc.Args["input"].(model.WriteUomInput))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.Authenticated == nil {
+				return nil, errors.New("directive authenticated is not implemented")
+			}
+			return ec.directives.Authenticated(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.Uom); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/QuickAmethyst/monosvc/graph/model.Uom`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Uom)
+	fc.Result = res
+	return ec.marshalNUom2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐUom(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateUom(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Uom_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Uom_name(ctx, field)
+			case "description":
+				return ec.fieldContext_Uom_description(ctx, field)
+			case "decimal":
+				return ec.fieldContext_Uom_decimal(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Uom", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateUom_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -1014,8 +1161,28 @@ func (ec *executionContext) _Query_uoms(ctx context.Context, field graphql.Colle
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Uoms(rctx, fc.Args["input"].(*model.UomsInput))
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Query().Uoms(rctx, fc.Args["input"].(*model.UomsInput))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.Authenticated == nil {
+				return nil, errors.New("directive authenticated is not implemented")
+			}
+			return ec.directives.Authenticated(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.UomsResult); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/QuickAmethyst/monosvc/graph/model.UomsResult`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3487,6 +3654,15 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "updateUom":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateUom(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -4037,6 +4213,21 @@ func (ec *executionContext) unmarshalNID2int64(ctx context.Context, v interface{
 
 func (ec *executionContext) marshalNID2int64(ctx context.Context, sel ast.SelectionSet, v int64) graphql.Marshaler {
 	res := graphql.MarshalInt64(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v interface{}) (int, error) {
+	res, err := graphql.UnmarshalInt(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
+	res := graphql.MarshalInt(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")

@@ -2,8 +2,8 @@ package auth
 
 import (
 	"fmt"
-	"github.com/gofrs/uuid"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 	"time"
 )
 

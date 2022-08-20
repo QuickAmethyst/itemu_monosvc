@@ -7,7 +7,7 @@ import (
 )
 
 type Http interface {
-	Handle(method Method, path string, fn netHttp.Handler)
+	Handle(method Method, path string, fn netHttp.HandlerFunc)
 	Handler() netHttp.Handler
 }
 
@@ -17,7 +17,9 @@ type http struct {
 	opt  *Options
 }
 
-func (h *http) Handle(method Method, path string, handler netHttp.Handler) {
+func (h *http) Handle(method Method, path string, handler netHttp.HandlerFunc) {
+	handler = appendHeaderToContext(handler)
+
 	h.mux.Add(string(method), path, handler)
 }
 

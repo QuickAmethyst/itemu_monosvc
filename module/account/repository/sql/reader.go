@@ -8,7 +8,7 @@ import (
 	"github.com/QuickAmethyst/monosvc/stdlibgo/errors"
 	qb "github.com/QuickAmethyst/monosvc/stdlibgo/querybuilder/sql"
 	sdkSql "github.com/QuickAmethyst/monosvc/stdlibgo/sql"
-	"github.com/gofrs/uuid"
+	"github.com/google/uuid"
 )
 
 type Reader interface {

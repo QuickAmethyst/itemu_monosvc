@@ -24,6 +24,7 @@ func (r *reader) GetUomList(ctx context.Context, stmt UomStatement, p qb.Paging)
 	limitClause, limitClauseArgs := p.BuildQuery()
 	whereClause, whereClauseArgs, err := qb.NewWhereClause(stmt)
 	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetUomListFailed, "Failed on select uom")
 		return result, p, err
 	}
 

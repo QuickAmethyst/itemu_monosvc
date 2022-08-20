@@ -2,7 +2,7 @@ package domain
 
 import (
 	"database/sql"
-	"github.com/gofrs/uuid"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"time"
 )

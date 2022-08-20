@@ -4,8 +4,8 @@ import (
 	"context"
 	"crypto/rsa"
 	"github.com/go-redis/redis/v9"
-	"github.com/gofrs/uuid"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 	"io/ioutil"
 	"strings"
 	"time"
@@ -55,7 +55,7 @@ func (a *auth) CreateTokenPair(subject string) (accessToken TokenDetail, refresh
 
 func (a *auth) createAccessToken(subject string) (token string, claims *jwt.RegisteredClaims, err error) {
 	var (
-		id, _     = uuid.NewV4()
+		id        = uuid.New()
 		expiresAt = TimeFunc().Add(a.accessTokenDuration)
 	)
 
@@ -73,7 +73,7 @@ func (a *auth) createAccessToken(subject string) (token string, claims *jwt.Regi
 
 func (a *auth) createRefreshToken(subject string) (token string, claims *jwt.RegisteredClaims, err error) {
 	var (
-		id, _     = uuid.NewV4()
+		id        = uuid.New()
 		expiresAt = TimeFunc().Add(a.refreshTokenDuration)
 	)
 
@@ -164,7 +164,7 @@ func (a *auth) RefreshAccessToken(rToken string) (accessToken TokenDetail, refre
 		return
 	}
 
-	refreshTokenID, err := uuid.FromString(refreshClaim.ID)
+	refreshTokenID, err := uuid.Parse(refreshClaim.ID)
 	if err != nil {
 		return
 	}
@@ -193,7 +193,7 @@ func (a *auth) RefreshAccessToken(rToken string) (accessToken TokenDetail, refre
 		return
 	}
 
-	refreshID, err := uuid.FromString(refreshClaim.ID)
+	refreshID, err := uuid.Parse(refreshClaim.ID)
 	if err != nil {
 		return
 	}

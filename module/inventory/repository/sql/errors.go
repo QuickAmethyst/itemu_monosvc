@@ -5,4 +5,5 @@ const (
 	EcodeStoreUomFailed
 	EcodeGetUomListFailed
 	EcodeGetUomListCountFailed
+	EcodeUpdateUomFailed
 )

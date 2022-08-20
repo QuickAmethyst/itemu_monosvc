@@ -5,9 +5,7 @@ package graph
 
 import (
 	"context"
-
 	"github.com/QuickAmethyst/monosvc/graph/model"
-	"github.com/QuickAmethyst/monosvc/module/inventory/domain"
 	inventorySql "github.com/QuickAmethyst/monosvc/module/inventory/repository/sql"
 	sdkGraphql "github.com/QuickAmethyst/monosvc/stdlibgo/graphql"
 	qb "github.com/QuickAmethyst/monosvc/stdlibgo/querybuilder/sql"
@@ -15,17 +13,10 @@ import (
 
 // StoreUom is the resolver for the storeUom field.
 func (r *mutationResolver) StoreUom(ctx context.Context, input model.WriteUomInput) (*model.Uom, error) {
-	var uom domain.Uom
-	uom.Name = input.Name
-
-	if err := uom.Description.Scan(input.Description); err != nil {
+	uom, err := input.Domain()
+	if err != nil {
 		r.Logger.Error(err.Error())
-		return nil, sdkGraphql.NewError(err, "Failed to assign description")
-	}
-
-	if err := uom.Decimal.Scan(input.Decimal); err != nil {
-		r.Logger.Error(err.Error())
-		return nil, sdkGraphql.NewError(err, "Failed to assign decimal")
+		return nil, sdkGraphql.NewError(err, "Failed to read input")
 	}
 
 	if err := r.Resolver.InventoryUsecase.StoreUom(ctx, &uom); err != nil {
@@ -35,6 +26,27 @@ func (r *mutationResolver) StoreUom(ctx context.Context, input model.WriteUomInp
 
 	return &model.Uom{
 		ID:          uom.ID,
+		Name:        uom.Name,
+		Description: uom.Description.String,
+		Decimal:     uom.Decimal.Int32,
+	}, nil
+}
+
+// UpdateUom is the resolver for the updateUom field.
+func (r *mutationResolver) UpdateUom(ctx context.Context, id int, input model.WriteUomInput) (*model.Uom, error) {
+	uom, err := input.Domain()
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed to read input")
+	}
+
+	if err = r.Resolver.InventoryUsecase.UpdateUomByID(ctx, int64(id), &uom); err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on update uom")
+	}
+
+	return &model.Uom{
+		ID:          int64(id),
 		Name:        uom.Name,
 		Description: uom.Description.String,
 		Decimal:     uom.Decimal.Int32,

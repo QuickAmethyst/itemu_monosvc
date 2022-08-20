@@ -1,9 +1,10 @@
 extend type Query {
-    uoms(input: UomsInput): UomsResult!
+    uoms(input: UomsInput): UomsResult! @authenticated
 }
 
 extend type Mutation {
-    storeUom(input: WriteUomInput!): Uom!
+    storeUom(input: WriteUomInput!): Uom! @authenticated
+    updateUom(id: Int!, input: WriteUomInput!): Uom! @authenticated
 }
 
 input UomsInput {

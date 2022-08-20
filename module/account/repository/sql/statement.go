@@ -1,6 +1,6 @@
 package sql
 
-import "github.com/gofrs/uuid"
+import "github.com/google/uuid"
 
 type UserStatement struct {
 	ID    uuid.UUID

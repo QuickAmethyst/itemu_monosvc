@@ -26,6 +26,7 @@ kill-process:
 run: kill-process
 	./build/app
 
+.PHONY: graph-generate
 graph-generate:
 	go run github.com/99designs/gqlgen generate
 

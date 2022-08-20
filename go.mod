@@ -8,8 +8,8 @@ require (
 	github.com/cloudflare/tableflip v1.2.3
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/go-redis/redis/v9 v9.0.0-beta.2
-	github.com/gofrs/uuid v4.2.0+incompatible
 	github.com/golang-jwt/jwt/v4 v4.4.2
+	github.com/google/uuid v1.3.0
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.6
 	github.com/mitchellh/mapstructure v1.5.0

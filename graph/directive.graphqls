@@ -1,0 +1,2 @@
+"Prevents access to a field if not authenticated"
+directive @authenticated on FIELD_DEFINITION
