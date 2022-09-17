@@ -1,14 +1,17 @@
 extend type Mutation {
     storeAccountClass(input: WriteAccountClassesInput!): AccountClass!
+    updateAccountClassByID(id: Int!, input: WriteAccountClassesInput!): AccountClass!
 }
 
 input WriteAccountClassesInput {
     name: String!
     type: Uint!
+    inactive: Boolean
 }
 
 type AccountClass {
     id: ID!
     name: String!
     type: Uint!
+    inactive: Boolean
 }

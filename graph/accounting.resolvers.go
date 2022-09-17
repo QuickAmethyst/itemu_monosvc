@@ -25,8 +25,30 @@ func (r *mutationResolver) StoreAccountClass(ctx context.Context, input model.Wr
 	}
 
 	return &model.AccountClass{
-		ID:   accountClass.ID,
-		Name: accountClass.Name,
-		Type: uint(accountClass.Type),
+		ID:       accountClass.ID,
+		Name:     accountClass.Name,
+		Type:     uint(accountClass.Type),
+		Inactive: accountClass.Inactive,
+	}, nil
+}
+
+// UpdateAccountClassByID is the resolver for the updateAccountClassByID field.
+func (r *mutationResolver) UpdateAccountClassByID(ctx context.Context, id int, input model.WriteAccountClassesInput) (*model.AccountClass, error) {
+	accountClass, err := input.Domain()
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed to read input", libErr.GetCode(err))
+	}
+
+	if err = r.Resolver.AccountingUsecase.UpdateAccountClassByID(ctx, int64(id), &accountClass); err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on update account class", libErr.GetCode(err))
+	}
+
+	return &model.AccountClass{
+		ID:       int64(id),
+		Name:     accountClass.Name,
+		Type:     uint(accountClass.Type),
+		Inactive: accountClass.Inactive,
 	}, nil
 }

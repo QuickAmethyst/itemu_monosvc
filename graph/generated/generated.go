@@ -46,9 +46,10 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	AccountClass struct {
-		ID   func(childComplexity int) int
-		Name func(childComplexity int) int
-		Type func(childComplexity int) int
+		ID       func(childComplexity int) int
+		Inactive func(childComplexity int) int
+		Name     func(childComplexity int) int
+		Type     func(childComplexity int) int
 	}
 
 	Credential struct {
@@ -59,11 +60,12 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		RefreshCredential func(childComplexity int, input string) int
-		SignIn            func(childComplexity int, input model.SignInInput) int
-		StoreAccountClass func(childComplexity int, input model.WriteAccountClassesInput) int
-		StoreUom          func(childComplexity int, input model.WriteUomInput) int
-		UpdateUom         func(childComplexity int, id int, input model.WriteUomInput) int
+		RefreshCredential      func(childComplexity int, input string) int
+		SignIn                 func(childComplexity int, input model.SignInInput) int
+		StoreAccountClass      func(childComplexity int, input model.WriteAccountClassesInput) int
+		StoreUom               func(childComplexity int, input model.WriteUomInput) int
+		UpdateAccountClassByID func(childComplexity int, id int, input model.WriteAccountClassesInput) int
+		UpdateUom              func(childComplexity int, id int, input model.WriteUomInput) int
 	}
 
 	Paging struct {
@@ -91,6 +93,7 @@ type ComplexityRoot struct {
 
 type MutationResolver interface {
 	StoreAccountClass(ctx context.Context, input model.WriteAccountClassesInput) (*model.AccountClass, error)
+	UpdateAccountClassByID(ctx context.Context, id int, input model.WriteAccountClassesInput) (*model.AccountClass, error)
 	SignIn(ctx context.Context, input model.SignInInput) (*model.Credential, error)
 	RefreshCredential(ctx context.Context, input string) (*model.Credential, error)
 	StoreUom(ctx context.Context, input model.WriteUomInput) (*model.Uom, error)
@@ -121,6 +124,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.AccountClass.ID(childComplexity), true
+
+	case "AccountClass.inactive":
+		if e.complexity.AccountClass.Inactive == nil {
+			break
+		}
+
+		return e.complexity.AccountClass.Inactive(childComplexity), true
 
 	case "AccountClass.name":
 		if e.complexity.AccountClass.Name == nil {
@@ -211,6 +221,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.StoreUom(childComplexity, args["input"].(model.WriteUomInput)), true
+
+	case "Mutation.updateAccountClassByID":
+		if e.complexity.Mutation.UpdateAccountClassByID == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateAccountClassByID_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateAccountClassByID(childComplexity, args["id"].(int), args["input"].(model.WriteAccountClassesInput)), true
 
 	case "Mutation.updateUom":
 		if e.complexity.Mutation.UpdateUom == nil {
@@ -374,17 +396,20 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 var sources = []*ast.Source{
 	{Name: "../accounting.graphqls", Input: `extend type Mutation {
     storeAccountClass(input: WriteAccountClassesInput!): AccountClass!
+    updateAccountClassByID(id: Int!, input: WriteAccountClassesInput!): AccountClass!
 }
 
 input WriteAccountClassesInput {
     name: String!
     type: Uint!
+    inactive: Boolean
 }
 
 type AccountClass {
     id: ID!
     name: String!
     type: Uint!
+    inactive: Boolean
 }
 `, BuiltIn: false},
 	{Name: "../auth.graphqls", Input: `extend type Mutation {
@@ -517,6 +542,30 @@ func (ec *executionContext) field_Mutation_storeUom_args(ctx context.Context, ra
 		}
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateAccountClassByID_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	var arg1 model.WriteAccountClassesInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg1, err = ec.unmarshalNWriteAccountClassesInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐWriteAccountClassesInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg1
 	return args, nil
 }
 
@@ -744,6 +793,47 @@ func (ec *executionContext) fieldContext_AccountClass_type(ctx context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _AccountClass_inactive(ctx context.Context, field graphql.CollectedField, obj *model.AccountClass) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AccountClass_inactive(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Inactive, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AccountClass_inactive(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AccountClass",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Credential_accessToken(ctx context.Context, field graphql.CollectedField, obj *model.Credential) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Credential_accessToken(ctx, field)
 	if err != nil {
@@ -965,6 +1055,8 @@ func (ec *executionContext) fieldContext_Mutation_storeAccountClass(ctx context.
 				return ec.fieldContext_AccountClass_name(ctx, field)
 			case "type":
 				return ec.fieldContext_AccountClass_type(ctx, field)
+			case "inactive":
+				return ec.fieldContext_AccountClass_inactive(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AccountClass", field.Name)
 		},
@@ -977,6 +1069,71 @@ func (ec *executionContext) fieldContext_Mutation_storeAccountClass(ctx context.
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_storeAccountClass_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateAccountClassByID(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateAccountClassByID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateAccountClassByID(rctx, fc.Args["id"].(int), fc.Args["input"].(model.WriteAccountClassesInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.AccountClass)
+	fc.Result = res
+	return ec.marshalNAccountClass2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClass(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateAccountClassByID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_AccountClass_id(ctx, field)
+			case "name":
+				return ec.fieldContext_AccountClass_name(ctx, field)
+			case "type":
+				return ec.fieldContext_AccountClass_type(ctx, field)
+			case "inactive":
+				return ec.fieldContext_AccountClass_inactive(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AccountClass", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateAccountClassByID_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -3781,7 +3938,7 @@ func (ec *executionContext) unmarshalInputWriteAccountClassesInput(ctx context.C
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "type"}
+	fieldsInOrder := [...]string{"name", "type", "inactive"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -3801,6 +3958,14 @@ func (ec *executionContext) unmarshalInputWriteAccountClassesInput(ctx context.C
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
 			it.Type, err = ec.unmarshalNUint2uint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "inactive":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("inactive"))
+			it.Inactive, err = ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -3893,6 +4058,10 @@ func (ec *executionContext) _AccountClass(ctx context.Context, sel ast.Selection
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "inactive":
+
+			out.Values[i] = ec._AccountClass_inactive(ctx, field, obj)
+
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -3976,6 +4145,15 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_storeAccountClass(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "updateAccountClassByID":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateAccountClassByID(ctx, field)
 			})
 
 			if out.Values[i] == graphql.Null {
