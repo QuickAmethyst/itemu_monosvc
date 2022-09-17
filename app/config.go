@@ -9,11 +9,12 @@ import (
 )
 
 type Config struct {
-	Development       bool
-	Grace             grace.Options
-	Redis             redis.UniversalOptions
-	AccountDatabase   sql.PostgresSQLOptions
-	InventoryDatabase sql.PostgresSQLOptions
-	HttpServer        httpserver.Options
-	HttpCors          http.CorsOptions
+	Development        bool
+	Grace              grace.Options
+	Redis              redis.UniversalOptions
+	AccountDatabase    sql.PostgresSQLOptions
+	InventoryDatabase  sql.PostgresSQLOptions
+	AccountingDatabase sql.PostgresSQLOptions
+	HttpServer         httpserver.Options
+	HttpCors           http.CorsOptions
 }

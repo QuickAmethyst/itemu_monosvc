@@ -8,6 +8,7 @@ import (
 
 	"github.com/QuickAmethyst/monosvc/graph/model"
 	accountUC "github.com/QuickAmethyst/monosvc/module/account/usecase"
+	libErr "github.com/QuickAmethyst/monosvc/stdlibgo/errors"
 	sdkGraphql "github.com/QuickAmethyst/monosvc/stdlibgo/graphql"
 )
 
@@ -20,7 +21,12 @@ func (r *mutationResolver) SignIn(ctx context.Context, input model.SignInInput) 
 
 	if err != nil {
 		r.Logger.Error(err.Error())
-		return nil, sdkGraphql.NewError(err, "Failed to sign in")
+		code := libErr.GetCode(err)
+		if code == accountUC.EcodeInvalidCredential {
+			return nil, sdkGraphql.NewError(err, "Invalid email or password", code)
+		}
+
+		return nil, sdkGraphql.NewError(err, "Failed to sign in", code)
 	}
 
 	return &model.Credential{
@@ -36,7 +42,7 @@ func (r *mutationResolver) RefreshCredential(ctx context.Context, input string) 
 	accessTokenDetail, refreshTokenDetail, err := r.AccountUsecase.RefreshAccessToken(input)
 	if err != nil {
 		r.Logger.Error(err.Error())
-		return nil, sdkGraphql.NewError(err, "Failed to refresh token")
+		return nil, sdkGraphql.NewError(err, "Failed to refresh token", libErr.GetCode(err))
 	}
 
 	return &model.Credential{

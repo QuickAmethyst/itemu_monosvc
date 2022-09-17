@@ -16,10 +16,15 @@ type DB interface {
 	Rebind(query string) string
 	GetContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 	PingContext(ctx context.Context) error
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
 }
 
 type db struct {
 	db *sqlx.DB
+}
+
+func (d *db) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
+	return d.db.BeginTx(ctx, opts)
 }
 
 func (d *db) GetContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error {

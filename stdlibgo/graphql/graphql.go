@@ -33,6 +33,7 @@ func New(es graphql.ExecutableSchema, opt Options) (h netHttp.HandlerFunc, pH ne
 		if errors.As(e, &graphErr) {
 			err.Message = graphErr.Message
 			err.Extensions = make(map[string]interface{})
+			err.Extensions["code"] = graphErr.Code
 			if opt.Development {
 				err.Extensions["error"] = graphErr.Error()
 			}

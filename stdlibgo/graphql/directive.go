@@ -5,6 +5,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/QuickAmethyst/monosvc/stdlibgo/appcontext"
 	"github.com/QuickAmethyst/monosvc/stdlibgo/auth"
+	"github.com/QuickAmethyst/monosvc/stdlibgo/errors"
 )
 
 type Directive func (ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
@@ -15,7 +16,7 @@ func AuthenticatedDirective(auth auth.Auth) Directive {
 
 		claim, err := auth.Authenticate(bearer)
 		if err != nil {
-			return nil, NewError(err, "authenticate failed")
+			return nil, NewError(err, "authenticate failed", errors.GetCode(err))
 		}
 
 		ctx = appcontext.SetUserID(ctx, claim.Subject)

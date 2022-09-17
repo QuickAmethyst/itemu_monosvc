@@ -17,7 +17,7 @@ type Options struct {
 }
 
 func New(opt *Options) SQL {
-	return struct {
+	return &struct {
 		Reader
 		Writer
 	}{

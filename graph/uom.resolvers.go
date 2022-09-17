@@ -5,8 +5,10 @@ package graph
 
 import (
 	"context"
+
 	"github.com/QuickAmethyst/monosvc/graph/model"
 	inventorySql "github.com/QuickAmethyst/monosvc/module/inventory/repository/sql"
+	libErr "github.com/QuickAmethyst/monosvc/stdlibgo/errors"
 	sdkGraphql "github.com/QuickAmethyst/monosvc/stdlibgo/graphql"
 	qb "github.com/QuickAmethyst/monosvc/stdlibgo/querybuilder/sql"
 )
@@ -16,12 +18,12 @@ func (r *mutationResolver) StoreUom(ctx context.Context, input model.WriteUomInp
 	uom, err := input.Domain()
 	if err != nil {
 		r.Logger.Error(err.Error())
-		return nil, sdkGraphql.NewError(err, "Failed to read input")
+		return nil, sdkGraphql.NewError(err, "Failed to read input", libErr.GetCode(err))
 	}
 
 	if err := r.Resolver.InventoryUsecase.StoreUom(ctx, &uom); err != nil {
 		r.Logger.Error(err.Error())
-		return nil, sdkGraphql.NewError(err, "Failed on create uom")
+		return nil, sdkGraphql.NewError(err, "Failed on create uom", libErr.GetCode(err))
 	}
 
 	return &model.Uom{
@@ -37,12 +39,12 @@ func (r *mutationResolver) UpdateUom(ctx context.Context, id int, input model.Wr
 	uom, err := input.Domain()
 	if err != nil {
 		r.Logger.Error(err.Error())
-		return nil, sdkGraphql.NewError(err, "Failed to read input")
+		return nil, sdkGraphql.NewError(err, "Failed to read input", libErr.GetCode(err))
 	}
 
 	if err = r.Resolver.InventoryUsecase.UpdateUomByID(ctx, int64(id), &uom); err != nil {
 		r.Logger.Error(err.Error())
-		return nil, sdkGraphql.NewError(err, "Failed on update uom")
+		return nil, sdkGraphql.NewError(err, "Failed on update uom", libErr.GetCode(err))
 	}
 
 	return &model.Uom{
@@ -72,7 +74,7 @@ func (r *queryResolver) Uoms(ctx context.Context, input *model.UomsInput) (*mode
 
 	if err != nil {
 		r.Logger.Error(err.Error())
-		return nil, sdkGraphql.NewError(err, "Failed on get list of uom")
+		return nil, sdkGraphql.NewError(err, "Failed on get list of uom", libErr.GetCode(err))
 	}
 
 	for _, uom := range uoms {

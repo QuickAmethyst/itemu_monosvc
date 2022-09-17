@@ -12,7 +12,7 @@ import (
 
 type Writer interface {
 	StoreUom(ctx context.Context, uom *domain.Uom) (err error)
-	UpdateByID(ctx context.Context, id int64, uom *domain.Uom) (err error)
+	UpdateUomByID(ctx context.Context, id int64, uom *domain.Uom) (err error)
 }
 
 type writer struct {
@@ -20,11 +20,11 @@ type writer struct {
 	db     sql.DB
 }
 
-func (w *writer) UpdateByID(ctx context.Context, id int64, uom *domain.Uom) (err error) {
-	return w.update(ctx, uom, UomStatement{ID: id})
+func (w *writer) UpdateUomByID(ctx context.Context, id int64, uom *domain.Uom) (err error) {
+	return w.updateUom(ctx, uom, UomStatement{ID: id})
 }
 
-func (w *writer) update(ctx context.Context, uom *domain.Uom, where UomStatement) (err error) {
+func (w *writer) updateUom(ctx context.Context, uom *domain.Uom, where UomStatement) (err error) {
 	whereClause, whereClauseArgs, err := qb.NewWhereClause(where)
 	if err != nil {
 		err = errors.PropagateWithCode(err, EcodeUpdateUomFailed, "Failed on select uom")

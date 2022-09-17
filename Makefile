@@ -21,7 +21,7 @@ coverage-visual: coverage
 	go tool cover -html=coverage.out
 
 kill-process:
-	lsof -i :8080 | awk '/app/ {print $$2}' | xargs kill
+	lsof -i :8000 | awk '/app/ {print $$2}' | xargs kill
 
 run: kill-process
 	./build/app

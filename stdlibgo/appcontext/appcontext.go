@@ -11,7 +11,12 @@ func SetRequestID(ctx context.Context, val string) context.Context {
 }
 
 func GetBearerToken(ctx context.Context) string {
-	return ctx.Value(BearerToken).(string)
+	v, ok := ctx.Value(BearerToken).(string)
+	if !ok {
+		return ""
+	}
+
+	return v
 }
 
 func SetBearerToken(ctx context.Context, val string) context.Context {
@@ -19,7 +24,12 @@ func SetBearerToken(ctx context.Context, val string) context.Context {
 }
 
 func GetUserID(ctx context.Context) string {
-	return ctx.Value(UserID).(string)
+	v, ok := ctx.Value(UserID).(string)
+	if !ok {
+		return ""
+	}
+
+	return v
 }
 
 func SetUserID(ctx context.Context, val string) context.Context {

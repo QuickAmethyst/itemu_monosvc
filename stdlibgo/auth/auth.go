@@ -102,7 +102,7 @@ func (a *auth) createRefreshToken(subject string) (token string, claims *jwt.Reg
 }
 
 func (a *auth) ParseClaimFromAccessToken(tokenStr string) (claims *jwt.RegisteredClaims, err error) {
-	token, err := jwt.ParseWithClaims(tokenStr, jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenStr, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if method, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, ErrInvalidSigningMethod(token.Header["alg"])
 		} else if method != jwt.SigningMethodRS256 {
@@ -209,7 +209,6 @@ func (a *auth) RefreshAccessToken(rToken string) (accessToken TokenDetail, refre
 
 func (a *auth) Authenticate(bearer string) (*jwt.RegisteredClaims, error) {
 	tokenVal := strings.TrimPrefix(bearer, "Bearer ")
-
 	if tokenVal == bearer {
 		return nil, ErrInvalidBearerToken
 	}

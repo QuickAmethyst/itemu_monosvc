@@ -16,7 +16,7 @@ type writer struct {
 }
 
 func (w *writer) UpdateUomByID(ctx context.Context, id int64, uom *domain.Uom) (err error) {
-	return w.InventorySQL.UpdateByID(ctx, id, uom)
+	return w.InventorySQL.UpdateUomByID(ctx, id, uom)
 }
 
 func (w *writer) StoreUom(ctx context.Context, uom *domain.Uom) (err error) {

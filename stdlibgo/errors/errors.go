@@ -2,6 +2,8 @@ package errors
 
 import "github.com/palantir/stacktrace"
 
+type ErrorCode = stacktrace.ErrorCode
+
 const (
 	ErrReadConfig = stacktrace.ErrorCode(iota)
 	ErrUnmarshal

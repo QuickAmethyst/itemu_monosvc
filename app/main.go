@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/QuickAmethyst/monosvc/graph/generated"
 	accountUC "github.com/QuickAmethyst/monosvc/module/account/usecase"
+	accountingUC "github.com/QuickAmethyst/monosvc/module/accounting/usecase"
 	inventoryUC "github.com/QuickAmethyst/monosvc/module/inventory/usecase"
 	sdkAuth "github.com/QuickAmethyst/monosvc/stdlibgo/auth"
 	"github.com/QuickAmethyst/monosvc/stdlibgo/sql"
@@ -13,36 +14,33 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/QuickAmethyst/monosvc/graph"
 	accountSql "github.com/QuickAmethyst/monosvc/module/account/repository/sql"
+	accountingSql "github.com/QuickAmethyst/monosvc/module/accounting/repository/sql"
 	inventorySql "github.com/QuickAmethyst/monosvc/module/inventory/repository/sql"
-	sdkGraphql "github.com/QuickAmethyst/monosvc/stdlibgo/graphql"
-	"go.uber.org/zap"
-	"os"
-
 	"github.com/QuickAmethyst/monosvc/stdlibgo/config"
 	sdkGrace "github.com/QuickAmethyst/monosvc/stdlibgo/grace"
+	sdkGraphql "github.com/QuickAmethyst/monosvc/stdlibgo/graphql"
 	"github.com/QuickAmethyst/monosvc/stdlibgo/http"
 	"github.com/QuickAmethyst/monosvc/stdlibgo/httpserver"
 	sdkLogger "github.com/QuickAmethyst/monosvc/stdlibgo/logger"
+	"go.uber.org/zap"
 	"log"
 	"syscall"
 )
 
-const defaultPort = "8080"
-
 var (
-	err                error
-	port               string
-	logger             sdkLogger.Logger
-	fileConf           config.File
-	conf               Config
-	rest               http.Http
-	stdLog             *log.Logger
-	graphES            graphql.ExecutableSchema
-	redisClient        redis.UniversalClient
-	inventorySqlClient sql.PostgresSQL
-	accountSqlClient   sql.PostgresSQL
-	resolver           graph.Resolver
-	auth               sdkAuth.Auth
+	err                 error
+	logger              sdkLogger.Logger
+	fileConf            config.File
+	conf                Config
+	rest                http.Http
+	stdLog              *log.Logger
+	graphES             graphql.ExecutableSchema
+	redisClient         redis.UniversalClient
+	accountSqlClient    sql.PostgresSQL
+	inventorySqlClient  sql.PostgresSQL
+	accountingSqlClient sql.PostgresSQL
+	resolver            graph.Resolver
+	auth                sdkAuth.Auth
 )
 
 func initConf() {
@@ -72,11 +70,15 @@ func initLogger() {
 }
 
 func initDB() {
+	if accountSqlClient, err = sql.NewPostgresSQL(conf.AccountDatabase); err != nil {
+		logger.Fatal(err.Error())
+	}
+
 	if inventorySqlClient, err = sql.NewPostgresSQL(conf.InventoryDatabase); err != nil {
 		logger.Fatal(err.Error())
 	}
 
-	if accountSqlClient, err = sql.NewPostgresSQL(conf.AccountDatabase); err != nil {
+	if accountingSqlClient, err = sql.NewPostgresSQL(conf.AccountingDatabase); err != nil {
 		logger.Fatal(err.Error())
 	}
 }
@@ -98,6 +100,12 @@ func initResolver() {
 		Logger:   logger,
 	})
 
+	accountingSQLRepo := accountingSql.New(&accountingSql.Options{
+		MasterDB: accountingSqlClient.Master(),
+		SlaveDB:  accountingSqlClient.Slave(),
+		Logger:   logger,
+	})
+
 	auth, err = sdkAuth.New(&sdkAuth.Options{
 		Redis:                redisClient,
 		PublicKeyPath:        "etc/rsa/public.pem",
@@ -111,9 +119,10 @@ func initResolver() {
 	}
 
 	resolver = graph.Resolver{
-		Logger:           logger,
-		InventoryUsecase: inventoryUC.New(&inventoryUC.Options{InventorySQL: inventorySQLRepo}),
-		AccountUsecase:   accountUC.New(&accountUC.Options{AccountSQL: accountSQLRepo, Auth: auth}),
+		Logger:            logger,
+		InventoryUsecase:  inventoryUC.New(&inventoryUC.Options{InventorySQL: inventorySQLRepo}),
+		AccountUsecase:    accountUC.New(&accountUC.Options{AccountSQL: accountSQLRepo, Auth: auth}),
+		AccountingUsecase: accountingUC.New(&accountingUC.Options{AccountingSQL: accountingSQLRepo}),
 	}
 }
 
@@ -130,11 +139,6 @@ func initGraph() {
 }
 
 func init() {
-	port = os.Getenv("PORT")
-	if port == "" {
-		port = defaultPort
-	}
-
 	initLogger()
 	initConf()
 	initRedis()

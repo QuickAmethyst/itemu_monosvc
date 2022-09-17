@@ -1,0 +1,14 @@
+extend type Mutation {
+    storeAccountClass(input: WriteAccountClassesInput!): AccountClass!
+}
+
+input WriteAccountClassesInput {
+    name: String!
+    type: Uint!
+}
+
+type AccountClass {
+    id: ID!
+    name: String!
+    type: Uint!
+}

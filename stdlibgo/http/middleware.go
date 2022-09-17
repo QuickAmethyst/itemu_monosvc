@@ -16,6 +16,7 @@ func appendHeaderToContext(handler netHttp.HandlerFunc) netHttp.HandlerFunc {
 		}
 
 		ctx = appcontext.SetRequestID(ctx, requestID)
+		ctx = appcontext.SetBearerToken(ctx, request.Header.Get("Authorization"))
 
 		handler(writer, request.WithContext(ctx))
 	}

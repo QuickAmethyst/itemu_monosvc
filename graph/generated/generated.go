@@ -45,6 +45,12 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	AccountClass struct {
+		ID   func(childComplexity int) int
+		Name func(childComplexity int) int
+		Type func(childComplexity int) int
+	}
+
 	Credential struct {
 		AccessExpire  func(childComplexity int) int
 		AccessToken   func(childComplexity int) int
@@ -55,6 +61,7 @@ type ComplexityRoot struct {
 	Mutation struct {
 		RefreshCredential func(childComplexity int, input string) int
 		SignIn            func(childComplexity int, input model.SignInInput) int
+		StoreAccountClass func(childComplexity int, input model.WriteAccountClassesInput) int
 		StoreUom          func(childComplexity int, input model.WriteUomInput) int
 		UpdateUom         func(childComplexity int, id int, input model.WriteUomInput) int
 	}
@@ -83,6 +90,7 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
+	StoreAccountClass(ctx context.Context, input model.WriteAccountClassesInput) (*model.AccountClass, error)
 	SignIn(ctx context.Context, input model.SignInInput) (*model.Credential, error)
 	RefreshCredential(ctx context.Context, input string) (*model.Credential, error)
 	StoreUom(ctx context.Context, input model.WriteUomInput) (*model.Uom, error)
@@ -106,6 +114,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	ec := executionContext{nil, e}
 	_ = ec
 	switch typeName + "." + field {
+
+	case "AccountClass.id":
+		if e.complexity.AccountClass.ID == nil {
+			break
+		}
+
+		return e.complexity.AccountClass.ID(childComplexity), true
+
+	case "AccountClass.name":
+		if e.complexity.AccountClass.Name == nil {
+			break
+		}
+
+		return e.complexity.AccountClass.Name(childComplexity), true
+
+	case "AccountClass.type":
+		if e.complexity.AccountClass.Type == nil {
+			break
+		}
+
+		return e.complexity.AccountClass.Type(childComplexity), true
 
 	case "Credential.accessExpire":
 		if e.complexity.Credential.AccessExpire == nil {
@@ -158,6 +187,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.SignIn(childComplexity, args["input"].(model.SignInInput)), true
+
+	case "Mutation.storeAccountClass":
+		if e.complexity.Mutation.StoreAccountClass == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_storeAccountClass_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.StoreAccountClass(childComplexity, args["input"].(model.WriteAccountClassesInput)), true
 
 	case "Mutation.storeUom":
 		if e.complexity.Mutation.StoreUom == nil {
@@ -269,6 +310,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputPagingInput,
 		ec.unmarshalInputSignInInput,
 		ec.unmarshalInputUomsInput,
+		ec.unmarshalInputWriteAccountClassesInput,
 		ec.unmarshalInputWriteUomInput,
 	)
 	first := true
@@ -330,6 +372,21 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
+	{Name: "../accounting.graphqls", Input: `extend type Mutation {
+    storeAccountClass(input: WriteAccountClassesInput!): AccountClass!
+}
+
+input WriteAccountClassesInput {
+    name: String!
+    type: Uint!
+}
+
+type AccountClass {
+    id: ID!
+    name: String!
+    type: Uint!
+}
+`, BuiltIn: false},
 	{Name: "../auth.graphqls", Input: `extend type Mutation {
     signIn(input: SignInInput!): Credential!
     refreshCredential(input: String!): Credential!
@@ -425,6 +482,21 @@ func (ec *executionContext) field_Mutation_signIn_args(ctx context.Context, rawA
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 		arg0, err = ec.unmarshalNSignInInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐSignInInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_storeAccountClass_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.WriteAccountClassesInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNWriteAccountClassesInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐWriteAccountClassesInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -539,6 +611,138 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 // endregion ************************** directives.gotpl **************************
 
 // region    **************************** field.gotpl *****************************
+
+func (ec *executionContext) _AccountClass_id(ctx context.Context, field graphql.CollectedField, obj *model.AccountClass) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AccountClass_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalNID2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AccountClass_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AccountClass",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AccountClass_name(ctx context.Context, field graphql.CollectedField, obj *model.AccountClass) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AccountClass_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AccountClass_name(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AccountClass",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AccountClass_type(ctx context.Context, field graphql.CollectedField, obj *model.AccountClass) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AccountClass_type(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Type, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(uint)
+	fc.Result = res
+	return ec.marshalNUint2uint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AccountClass_type(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AccountClass",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Uint does not have child fields")
+		},
+	}
+	return fc, nil
+}
 
 func (ec *executionContext) _Credential_accessToken(ctx context.Context, field graphql.CollectedField, obj *model.Credential) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Credential_accessToken(ctx, field)
@@ -712,6 +916,69 @@ func (ec *executionContext) fieldContext_Credential_refreshExpire(ctx context.Co
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_storeAccountClass(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_storeAccountClass(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().StoreAccountClass(rctx, fc.Args["input"].(model.WriteAccountClassesInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.AccountClass)
+	fc.Result = res
+	return ec.marshalNAccountClass2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClass(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_storeAccountClass(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_AccountClass_id(ctx, field)
+			case "name":
+				return ec.fieldContext_AccountClass_name(ctx, field)
+			case "type":
+				return ec.fieldContext_AccountClass_type(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AccountClass", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_storeAccountClass_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
 	}
 	return fc, nil
 }
@@ -3507,6 +3774,42 @@ func (ec *executionContext) unmarshalInputUomsInput(ctx context.Context, obj int
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputWriteAccountClassesInput(ctx context.Context, obj interface{}) (model.WriteAccountClassesInput, error) {
+	var it model.WriteAccountClassesInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "type"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			it.Name, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "type":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			it.Type, err = ec.unmarshalNUint2uint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputWriteUomInput(ctx context.Context, obj interface{}) (model.WriteUomInput, error) {
 	var it model.WriteUomInput
 	asMap := map[string]interface{}{}
@@ -3558,6 +3861,48 @@ func (ec *executionContext) unmarshalInputWriteUomInput(ctx context.Context, obj
 // endregion ************************** interface.gotpl ***************************
 
 // region    **************************** object.gotpl ****************************
+
+var accountClassImplementors = []string{"AccountClass"}
+
+func (ec *executionContext) _AccountClass(ctx context.Context, sel ast.SelectionSet, obj *model.AccountClass) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, accountClassImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AccountClass")
+		case "id":
+
+			out.Values[i] = ec._AccountClass_id(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "name":
+
+			out.Values[i] = ec._AccountClass_name(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "type":
+
+			out.Values[i] = ec._AccountClass_type(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
 
 var credentialImplementors = []string{"Credential"}
 
@@ -3627,6 +3972,15 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Mutation")
+		case "storeAccountClass":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_storeAccountClass(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "signIn":
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
@@ -4177,6 +4531,20 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
+func (ec *executionContext) marshalNAccountClass2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClass(ctx context.Context, sel ast.SelectionSet, v model.AccountClass) graphql.Marshaler {
+	return ec._AccountClass(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAccountClass2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClass(ctx context.Context, sel ast.SelectionSet, v *model.AccountClass) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AccountClass(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v interface{}) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -4366,6 +4734,11 @@ func (ec *executionContext) marshalNUomsResult2ᚖgithubᚗcomᚋQuickAmethyst�
 		return graphql.Null
 	}
 	return ec._UomsResult(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNWriteAccountClassesInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐWriteAccountClassesInput(ctx context.Context, v interface{}) (model.WriteAccountClassesInput, error) {
+	res, err := ec.unmarshalInputWriteAccountClassesInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNWriteUomInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐWriteUomInput(ctx context.Context, v interface{}) (model.WriteUomInput, error) {

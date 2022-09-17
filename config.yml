@@ -5,7 +5,7 @@ Redis:
   MasterName: ""
   Password: "redis"
   Addrs:
-    - "localhost:6378"
+    - "localhost:6379"
   # single node and sentinel
   DB: "0"
   MaxRetries: 2
@@ -57,16 +57,33 @@ InventoryDatabase:
     databaseName: "monosvc_inventory"
     ssl: false
 
+AccountingDatabase:
+  master:
+    host: "localhost"
+    port: 5432
+    user: "postgres"
+    password: "postgres"
+    databaseName: "monosvc_accounting"
+    ssl: false
+  slave:
+    host: "localhost"
+    port: 5432
+    user: "postgres"
+    password: "postgres"
+    databaseName: "monosvc_accounting"
+    ssl: false
+
 HttpServer:
-  address: "localhost:8080"
+  address: "localhost:8000"
   readHeaderTimeout: 1s
   readTimeout: 2s
-  writeTimeout: 4200ms
+  writeTimeout: 5500ms
   idleTimeout: 1s
 
 HttpCors:
   allowedOrigins:
-    - "http://localhost:8080"
+    - "http://localhost:8000"
+    - "http://localhost:3000"
   allowedMethods:
     - "POST"
     - "GET"
@@ -75,12 +92,12 @@ HttpCors:
     - "DELETE"
   allowedHeaders:
     - "Authorization"
+    - "Content-Type"
   exposedHeaders:
     - "x-request-id"
-  maxAge: "65000"
+  maxAge: "0"
   allowCredentials: true
-  optionsPassthrough: true
-  debug: false
+  debug: true
 
 Grace:
   upgradeTimeout: 10s
