@@ -13,6 +13,7 @@ import (
 type Writer interface {
 	StoreAccountClass(ctx context.Context, accountClass *domain.AccountClass) (err error)
 	UpdateAccountClassByID(ctx context.Context, id int64, accountClass *domain.AccountClass) (err error)
+	DeleteAccountClassByID(ctx context.Context, id int64) (err error)
 }
 
 type writer struct {
@@ -20,11 +21,38 @@ type writer struct {
 	db     sql.DB
 }
 
-func (w *writer) UpdateAccountClassByID(ctx context.Context, id int64, accountClass *domain.AccountClass) (err error) {
-	return w.updateAccountClass(ctx, accountClass, AccountClassStatement{ID: id})
+func (w *writer) DeleteAccountClassByID(ctx context.Context, id int64) (err error) {
+	_, err = w.deleteAccountClass(ctx, AccountClassStatement{ID: id})
+	return
 }
 
-func (w *writer) updateAccountClass(ctx context.Context, accountClass *domain.AccountClass, where AccountClassStatement) (err error) {
+func (w *writer) deleteAccountClass(ctx context.Context, where AccountClassStatement) (result sql.Result, err error) {
+	whereClause, whereClauseArgs, err := qb.NewWhereClause(where)
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeUpdateAccountClassFailed, "Failed on select account class")
+		return
+	}
+
+	deleteQuery := fmt.Sprintf(`
+		DELETE FROM account_classes
+		%s
+	`, whereClause)
+
+	result, err = w.db.ExecContext(ctx, w.db.Rebind(deleteQuery), whereClauseArgs...)
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeDeleteAccountClassFailed, "Update account class failed")
+		return
+	}
+
+	return
+}
+
+func (w *writer) UpdateAccountClassByID(ctx context.Context, id int64, accountClass *domain.AccountClass) (err error) {
+	_, err = w.updateAccountClass(ctx, accountClass, AccountClassStatement{ID: id})
+	return
+}
+
+func (w *writer) updateAccountClass(ctx context.Context, accountClass *domain.AccountClass, where AccountClassStatement) (result sql.Result, err error) {
 	whereClause, whereClauseArgs, err := qb.NewWhereClause(where)
 	if err != nil {
 		err = errors.PropagateWithCode(err, EcodeUpdateAccountClassFailed, "Failed on select account class")
@@ -36,16 +64,11 @@ func (w *writer) updateAccountClass(ctx context.Context, accountClass *domain.Ac
 		SET name = ?, type = ?
 		%s
 	`, whereClause)
-	stmt, err := w.db.PrepareContext(ctx, w.db.Rebind(updateQuery))
-	if err != nil {
-		err = errors.PropagateWithCode(err, EcodePreparedStatementFailed, "Prepare statement failed")
-		return
-	}
 
 	args := []interface{}{accountClass.Name, accountClass.Type}
-	_, err = stmt.ExecContext(ctx, append(args, whereClauseArgs...)...)
+	result, err = w.db.ExecContext(ctx, w.db.Rebind(updateQuery), append(args, whereClauseArgs...)...)
 	if err != nil {
-		err = errors.PropagateWithCode(err, EcodeUpdateAccountClassFailed, "Exec statement failed")
+		err = errors.PropagateWithCode(err, EcodeUpdateAccountClassFailed, "Update account class failed")
 		return
 	}
 
@@ -53,19 +76,14 @@ func (w *writer) updateAccountClass(ctx context.Context, accountClass *domain.Ac
 }
 
 func (w *writer) StoreAccountClass(ctx context.Context, accountClass *domain.AccountClass) (err error) {
-	stmt, err := w.db.PrepareContext(ctx, `
+	err = w.db.QueryRowContext(ctx, `
 		INSERT INTO account_classes (name, type, inactive)
 		VALUES ($1, $2, $3)
-		RETURNING ID
-	`)
+		RETURNING id
+	`, accountClass.Name, accountClass.Type, accountClass.Inactive).Scan(&accountClass.ID)
 
 	if err != nil {
-		err = errors.PropagateWithCode(err, EcodePreparedStatementFailed, "Prepare statement failed")
-		return
-	}
-
-	if err = stmt.GetContext(ctx, &accountClass.ID, accountClass.Name, accountClass.Type, accountClass.Inactive); err != nil {
-		err = errors.PropagateWithCode(err, EcodeStoreAccountClassFailed, "Exec statement failed")
+		err = errors.PropagateWithCode(err, EcodeStoreAccountClassFailed, "Insert account class failed")
 		return
 	}
 

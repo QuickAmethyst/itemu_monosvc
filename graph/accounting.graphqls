@@ -1,6 +1,7 @@
 extend type Mutation {
     storeAccountClass(input: WriteAccountClassesInput!): AccountClass!
     updateAccountClassByID(id: Int!, input: WriteAccountClassesInput!): AccountClass!
+    deleteAccountClassByID(id: Int!): Int!
 }
 
 input WriteAccountClassesInput {

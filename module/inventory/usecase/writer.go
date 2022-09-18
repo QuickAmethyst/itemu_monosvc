@@ -9,6 +9,7 @@ import (
 type Writer interface {
 	StoreUom(ctx context.Context, uom *domain.Uom) (err error)
 	UpdateUomByID(ctx context.Context, id int64, uom *domain.Uom) (err error)
+
 }
 
 type writer struct {

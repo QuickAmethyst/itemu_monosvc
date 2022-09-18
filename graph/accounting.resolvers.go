@@ -5,7 +5,6 @@ package graph
 
 import (
 	"context"
-
 	"github.com/QuickAmethyst/monosvc/graph/model"
 	libErr "github.com/QuickAmethyst/monosvc/stdlibgo/errors"
 	sdkGraphql "github.com/QuickAmethyst/monosvc/stdlibgo/graphql"
@@ -51,4 +50,14 @@ func (r *mutationResolver) UpdateAccountClassByID(ctx context.Context, id int, i
 		Type:     uint(accountClass.Type),
 		Inactive: accountClass.Inactive,
 	}, nil
+}
+
+// DeleteAccountClassByID is the resolver for the deleteAccountClassByID field.
+func (r *mutationResolver) DeleteAccountClassByID(ctx context.Context, id int) (int, error) {
+	if err := r.AccountingUsecase.DeleteAccountClassByID(ctx, int64(id)); err != nil {
+		r.Logger.Error(err.Error())
+		return id, sdkGraphql.NewError(err, "Failed to delete account class", libErr.GetCode(err))
+	}
+
+	return id, nil
 }

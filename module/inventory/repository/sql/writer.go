@@ -21,27 +21,23 @@ type writer struct {
 }
 
 func (w *writer) UpdateUomByID(ctx context.Context, id int64, uom *domain.Uom) (err error) {
-	return w.updateUom(ctx, uom, UomStatement{ID: id})
+	_, err = w.updateUom(ctx, uom, UomStatement{ID: id})
+	return
 }
 
-func (w *writer) updateUom(ctx context.Context, uom *domain.Uom, where UomStatement) (err error) {
+func (w *writer) updateUom(ctx context.Context, uom *domain.Uom, where UomStatement) (result sql.Result, err error) {
 	whereClause, whereClauseArgs, err := qb.NewWhereClause(where)
 	if err != nil {
-		err = errors.PropagateWithCode(err, EcodeUpdateUomFailed, "Failed on select uom")
+		err = errors.PropagateWithCode(err, EcodeUpdateUomFailed, "Failed on build where clause")
 		return
 	}
 
 	updateQuery := fmt.Sprintf("UPDATE uoms SET name = ?, description = ?, decimal = ? %s", whereClause)
-	stmt, err := w.db.PrepareContext(ctx, w.db.Rebind(updateQuery))
-	if err != nil {
-		err = errors.PropagateWithCode(err, EcodePreparedStatementFailed, "Prepare statement failed")
-		return
-	}
 
 	args := []interface{}{uom.Name, uom.Description, uom.Decimal}
-	_, err = stmt.ExecContext(ctx, append(args, whereClauseArgs...)...)
+	result, err = w.db.ExecContext(ctx, w.db.Rebind(updateQuery), append(args, whereClauseArgs...)...)
 	if err != nil {
-		err = errors.PropagateWithCode(err, EcodeUpdateUomFailed, "Exec statement failed")
+		err = errors.PropagateWithCode(err, EcodeUpdateUomFailed, "Update uom failed")
 		return
 	}
 
@@ -49,14 +45,14 @@ func (w *writer) updateUom(ctx context.Context, uom *domain.Uom, where UomStatem
 }
 
 func (w *writer) StoreUom(ctx context.Context, uom *domain.Uom) (err error) {
-	stmt, err := w.db.PrepareContext(ctx, "INSERT INTO uoms (name, description, decimal) VALUES ($1, $2, $3) RETURNING id")
-	if err != nil {
-		err = errors.PropagateWithCode(err, EcodePreparedStatementFailed, "Prepare statement failed")
-		return
-	}
+	err = w.db.QueryRowContext(ctx, `
+		INSERT INTO uoms (name, description, decimal)
+		VALUES ($1, $2, $3)
+		RETURNING id
+	`, uom.Name, uom.Description, uom.Decimal).Scan(&uom.ID)
 
-	if err = stmt.GetContext(ctx, &uom.ID, uom.Name, uom.Description, uom.Decimal); err != nil {
-		err = errors.PropagateWithCode(err, EcodeStoreUomFailed, "Exec statement failed")
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeStoreUomFailed, "Insert uom failed")
 		return
 	}
 

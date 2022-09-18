@@ -9,10 +9,15 @@ import (
 type Writer interface {
 	StoreAccountClass(ctx context.Context, accountClasses *domain.AccountClass) (err error)
 	UpdateAccountClassByID(ctx context.Context, id int64, accountClass *domain.AccountClass) (err error)
+	DeleteAccountClassByID(ctx context.Context, id int64) (err error)
 }
 
 type writer struct {
 	AccountingSQL sql.SQL
+}
+
+func (w *writer) DeleteAccountClassByID(ctx context.Context, id int64) (err error) {
+	return w.AccountingSQL.DeleteAccountClassByID(ctx, id)
 }
 
 func (w *writer) UpdateAccountClassByID(ctx context.Context, id int64, accountClass *domain.AccountClass) (err error) {
