@@ -7,13 +7,16 @@ type Options struct {
 }
 
 type Usecase interface {
+	Reader
 	Writer
 }
 
 func New(opt *Options) Usecase {
 	return &struct {
+		Reader
 		Writer
 	} {
+		Reader: NewReader(opt),
 		Writer: NewWriter(opt),
 	}
 }

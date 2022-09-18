@@ -12,13 +12,16 @@ type Options struct {
 }
 
 type SQL interface {
+	Reader
 	Writer
 }
 
 func New(opt *Options) SQL {
 	return &struct {
+		Reader
 		Writer
 	} {
+		Reader: NewReader(opt),
 		Writer: NewWriter(opt),
 	}
 }

@@ -52,6 +52,11 @@ type ComplexityRoot struct {
 		Type     func(childComplexity int) int
 	}
 
+	AccountClassesResult struct {
+		Data   func(childComplexity int) int
+		Paging func(childComplexity int) int
+	}
+
 	Credential struct {
 		AccessExpire  func(childComplexity int) int
 		AccessToken   func(childComplexity int) int
@@ -76,7 +81,9 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Uoms func(childComplexity int, input *model.UomsInput) int
+		AccountClass   func(childComplexity int, input model.AccountClassInput) int
+		AccountClasses func(childComplexity int, input *model.AccountClassesInput) int
+		Uoms           func(childComplexity int, input *model.UomsInput) int
 	}
 
 	Uom struct {
@@ -102,6 +109,8 @@ type MutationResolver interface {
 	UpdateUom(ctx context.Context, id int, input model.WriteUomInput) (*model.Uom, error)
 }
 type QueryResolver interface {
+	AccountClasses(ctx context.Context, input *model.AccountClassesInput) (*model.AccountClassesResult, error)
+	AccountClass(ctx context.Context, input model.AccountClassInput) (*model.AccountClass, error)
 	Uoms(ctx context.Context, input *model.UomsInput) (*model.UomsResult, error)
 }
 
@@ -147,6 +156,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.AccountClass.Type(childComplexity), true
+
+	case "AccountClassesResult.data":
+		if e.complexity.AccountClassesResult.Data == nil {
+			break
+		}
+
+		return e.complexity.AccountClassesResult.Data(childComplexity), true
+
+	case "AccountClassesResult.paging":
+		if e.complexity.AccountClassesResult.Paging == nil {
+			break
+		}
+
+		return e.complexity.AccountClassesResult.Paging(childComplexity), true
 
 	case "Credential.accessExpire":
 		if e.complexity.Credential.AccessExpire == nil {
@@ -281,6 +304,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Paging.Total(childComplexity), true
 
+	case "Query.accountClass":
+		if e.complexity.Query.AccountClass == nil {
+			break
+		}
+
+		args, err := ec.field_Query_accountClass_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.AccountClass(childComplexity, args["input"].(model.AccountClassInput)), true
+
+	case "Query.accountClasses":
+		if e.complexity.Query.AccountClasses == nil {
+			break
+		}
+
+		args, err := ec.field_Query_accountClasses_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.AccountClasses(childComplexity, args["input"].(*model.AccountClassesInput)), true
+
 	case "Query.uoms":
 		if e.complexity.Query.Uoms == nil {
 			break
@@ -343,6 +390,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	rc := graphql.GetOperationContext(ctx)
 	ec := executionContext{rc, e}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputAccountClassInput,
+		ec.unmarshalInputAccountClassesInput,
 		ec.unmarshalInputPagingInput,
 		ec.unmarshalInputSignInInput,
 		ec.unmarshalInputUomsInput,
@@ -408,10 +457,23 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
-	{Name: "../accounting.graphqls", Input: `extend type Mutation {
+	{Name: "../accounting.graphqls", Input: `extend type Query {
+    accountClasses(input: AccountClassesInput): AccountClassesResult!
+    accountClass(input: AccountClassInput!): AccountClass!
+}
+
+extend type Mutation {
     storeAccountClass(input: WriteAccountClassesInput!): AccountClass!
     updateAccountClassByID(id: Int!, input: WriteAccountClassesInput!): AccountClass!
     deleteAccountClassByID(id: Int!): Int!
+}
+
+input AccountClassesInput {
+    paging: PagingInput
+}
+
+input AccountClassInput {
+    id: Int!
 }
 
 input WriteAccountClassesInput {
@@ -426,7 +488,11 @@ type AccountClass {
     type: Uint!
     inactive: Boolean
 }
-`, BuiltIn: false},
+
+type AccountClassesResult {
+    data: [AccountClass!]!
+    paging: Paging!
+}`, BuiltIn: false},
 	{Name: "../auth.graphqls", Input: `extend type Mutation {
     signIn(input: SignInInput!): Credential!
     refreshCredential(input: String!): Credential!
@@ -635,6 +701,36 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_accountClass_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.AccountClassInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNAccountClassInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_accountClasses_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *model.AccountClassesInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalOAccountClassesInput2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassesInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -859,6 +955,112 @@ func (ec *executionContext) fieldContext_AccountClass_inactive(ctx context.Conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AccountClassesResult_data(ctx context.Context, field graphql.CollectedField, obj *model.AccountClassesResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AccountClassesResult_data(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Data, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.AccountClass)
+	fc.Result = res
+	return ec.marshalNAccountClass2ᚕᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AccountClassesResult_data(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AccountClassesResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_AccountClass_id(ctx, field)
+			case "name":
+				return ec.fieldContext_AccountClass_name(ctx, field)
+			case "type":
+				return ec.fieldContext_AccountClass_type(ctx, field)
+			case "inactive":
+				return ec.fieldContext_AccountClass_inactive(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AccountClass", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AccountClassesResult_paging(ctx context.Context, field graphql.CollectedField, obj *model.AccountClassesResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AccountClassesResult_paging(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Paging, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Paging)
+	fc.Result = res
+	return ec.marshalNPaging2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐPaging(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AccountClassesResult_paging(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AccountClassesResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "currentPage":
+				return ec.fieldContext_Paging_currentPage(ctx, field)
+			case "pageSize":
+				return ec.fieldContext_Paging_pageSize(ctx, field)
+			case "total":
+				return ec.fieldContext_Paging_total(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Paging", field.Name)
 		},
 	}
 	return fc, nil
@@ -1653,6 +1855,132 @@ func (ec *executionContext) fieldContext_Paging_total(ctx context.Context, field
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Uint does not have child fields")
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_accountClasses(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_accountClasses(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().AccountClasses(rctx, fc.Args["input"].(*model.AccountClassesInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.AccountClassesResult)
+	fc.Result = res
+	return ec.marshalNAccountClassesResult2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassesResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_accountClasses(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "data":
+				return ec.fieldContext_AccountClassesResult_data(ctx, field)
+			case "paging":
+				return ec.fieldContext_AccountClassesResult_paging(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AccountClassesResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_accountClasses_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_accountClass(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_accountClass(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().AccountClass(rctx, fc.Args["input"].(model.AccountClassInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.AccountClass)
+	fc.Result = res
+	return ec.marshalNAccountClass2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClass(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_accountClass(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_AccountClass_id(ctx, field)
+			case "name":
+				return ec.fieldContext_AccountClass_name(ctx, field)
+			case "type":
+				return ec.fieldContext_AccountClass_type(ctx, field)
+			case "inactive":
+				return ec.fieldContext_AccountClass_inactive(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AccountClass", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_accountClass_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
 	}
 	return fc, nil
 }
@@ -3916,6 +4244,62 @@ func (ec *executionContext) fieldContext___Type_specifiedByURL(ctx context.Conte
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputAccountClassInput(ctx context.Context, obj interface{}) (model.AccountClassInput, error) {
+	var it model.AccountClassInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			it.ID, err = ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputAccountClassesInput(ctx context.Context, obj interface{}) (model.AccountClassesInput, error) {
+	var it model.AccountClassesInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"paging"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "paging":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("paging"))
+			it.Paging, err = ec.unmarshalOPagingInput2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐPagingInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputPagingInput(ctx context.Context, obj interface{}) (model.PagingInput, error) {
 	var it model.PagingInput
 	asMap := map[string]interface{}{}
@@ -4158,6 +4542,41 @@ func (ec *executionContext) _AccountClass(ctx context.Context, sel ast.Selection
 	return out
 }
 
+var accountClassesResultImplementors = []string{"AccountClassesResult"}
+
+func (ec *executionContext) _AccountClassesResult(ctx context.Context, sel ast.SelectionSet, obj *model.AccountClassesResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, accountClassesResultImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AccountClassesResult")
+		case "data":
+
+			out.Values[i] = ec._AccountClassesResult_data(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "paging":
+
+			out.Values[i] = ec._AccountClassesResult_paging(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var credentialImplementors = []string{"Credential"}
 
 func (ec *executionContext) _Credential(ctx context.Context, sel ast.SelectionSet, obj *model.Credential) graphql.Marshaler {
@@ -4361,6 +4780,52 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Query")
+		case "accountClasses":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_accountClasses(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
+		case "accountClass":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_accountClass(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
 		case "uoms":
 			field := field
 
@@ -4807,6 +5272,50 @@ func (ec *executionContext) marshalNAccountClass2githubᚗcomᚋQuickAmethystᚋ
 	return ec._AccountClass(ctx, sel, &v)
 }
 
+func (ec *executionContext) marshalNAccountClass2ᚕᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.AccountClass) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAccountClass2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClass(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalNAccountClass2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClass(ctx context.Context, sel ast.SelectionSet, v *model.AccountClass) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -4815,6 +5324,25 @@ func (ec *executionContext) marshalNAccountClass2ᚖgithubᚗcomᚋQuickAmethyst
 		return graphql.Null
 	}
 	return ec._AccountClass(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNAccountClassInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassInput(ctx context.Context, v interface{}) (model.AccountClassInput, error) {
+	res, err := ec.unmarshalInputAccountClassInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAccountClassesResult2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassesResult(ctx context.Context, sel ast.SelectionSet, v model.AccountClassesResult) graphql.Marshaler {
+	return ec._AccountClassesResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAccountClassesResult2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassesResult(ctx context.Context, sel ast.SelectionSet, v *model.AccountClassesResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AccountClassesResult(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v interface{}) (bool, error) {
@@ -5269,6 +5797,14 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalOAccountClassesInput2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassesInput(ctx context.Context, v interface{}) (*model.AccountClassesInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputAccountClassesInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v interface{}) (bool, error) {

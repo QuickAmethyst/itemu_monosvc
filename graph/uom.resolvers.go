@@ -62,12 +62,9 @@ func (r *queryResolver) Uoms(ctx context.Context, input *model.UomsInput) (*mode
 		p      qb.Paging
 	)
 
-	p.Normalize()
-	if input != nil {
-		if input.Paging != nil {
-			p.CurrentPage = input.Paging.CurrentPage
-			p.PageSize = input.Paging.PageSize
-		}
+	if input.Paging != nil {
+		p.PageSize = input.Paging.PageSize
+		p.CurrentPage = input.Paging.CurrentPage
 	}
 
 	uoms, paging, err := r.InventoryUsecase.GetUomList(ctx, inventorySql.UomStatement{}, p)

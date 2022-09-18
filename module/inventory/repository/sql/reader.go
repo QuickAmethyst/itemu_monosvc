@@ -18,14 +18,17 @@ type reader struct {
 	db sql.DB
 }
 
-func (r *reader) GetUomList(ctx context.Context, stmt UomStatement, p qb.Paging) ([]domain.Uom, qb.Paging, error) {
-	result := make([]domain.Uom, 0)
+func (r *reader) GetUomList(ctx context.Context, stmt UomStatement, p qb.Paging) (result []domain.Uom, paging qb.Paging, err error) {
+	result = make([]domain.Uom, 0)
+	paging = p
+	paging.Normalize()
+
 	fromClause := "FROM uoms"
 	limitClause, limitClauseArgs := p.BuildQuery()
 	whereClause, whereClauseArgs, err := qb.NewWhereClause(stmt)
 	if err != nil {
-		err = errors.PropagateWithCode(err, EcodeGetUomListFailed, "Failed on select uom")
-		return result, p, err
+		err = errors.PropagateWithCode(err, EcodeGetUomListFailed, "Failed on build where clause")
+		return
 	}
 
 	selectQuery := fmt.Sprintf("SELECT id, name, description, decimal %s %s %s", fromClause, whereClause, limitClause)
@@ -33,15 +36,15 @@ func (r *reader) GetUomList(ctx context.Context, stmt UomStatement, p qb.Paging)
 
 	if err = r.db.SelectContext(ctx, &result, r.db.Rebind(selectQuery), append(whereClauseArgs, limitClauseArgs...)...); err != nil {
 		err = errors.PropagateWithCode(err, EcodeGetUomListFailed, "Failed on select uom")
-		return result, p , err
+		return
 	}
 
-	if err = r.db.GetContext(ctx, &p.Total, r.db.Rebind(countQuery), whereClauseArgs...); err != nil {
+	if err = r.db.GetContext(ctx, &paging.Total, r.db.Rebind(countQuery), whereClauseArgs...); err != nil {
 		err = errors.PropagateWithCode(err, EcodeGetUomListCountFailed, "Failed on select count uom")
-		return result, p , err
+		return
 	}
 
-	return result, p, nil
+	return
 }
 
 func NewReader(opt *Options) Reader {

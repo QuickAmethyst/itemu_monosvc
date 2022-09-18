@@ -2,13 +2,15 @@
 
 package model
 
-type Paging struct {
-	CurrentPage uint `json:"currentPage"`
-	PageSize    uint `json:"pageSize"`
-	Total       uint `json:"total"`
+type AccountClassInput struct {
+	ID int `json:"id"`
 }
 
-type PagingInput struct {
-	CurrentPage uint `json:"currentPage"`
-	PageSize    uint `json:"pageSize"`
+type AccountClassesInput struct {
+	Paging *PagingInput `json:"paging"`
+}
+
+type AccountClassesResult struct {
+	Data   []*AccountClass `json:"data"`
+	Paging *Paging         `json:"paging"`
 }

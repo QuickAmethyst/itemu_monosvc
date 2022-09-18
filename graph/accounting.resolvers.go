@@ -5,9 +5,12 @@ package graph
 
 import (
 	"context"
+
 	"github.com/QuickAmethyst/monosvc/graph/model"
+	"github.com/QuickAmethyst/monosvc/module/accounting/repository/sql"
 	libErr "github.com/QuickAmethyst/monosvc/stdlibgo/errors"
 	sdkGraphql "github.com/QuickAmethyst/monosvc/stdlibgo/graphql"
+	qb "github.com/QuickAmethyst/monosvc/stdlibgo/querybuilder/sql"
 )
 
 // StoreAccountClass is the resolver for the storeAccountClass field.
@@ -60,4 +63,60 @@ func (r *mutationResolver) DeleteAccountClassByID(ctx context.Context, id int) (
 	}
 
 	return id, nil
+}
+
+// AccountClasses is the resolver for the accountClasses field.
+func (r *queryResolver) AccountClasses(ctx context.Context, input *model.AccountClassesInput) (*model.AccountClassesResult, error) {
+	var (
+		result model.AccountClassesResult
+		p      qb.Paging
+	)
+
+	if input.Paging != nil {
+		p.PageSize = input.Paging.PageSize
+		p.CurrentPage = input.Paging.CurrentPage
+	}
+
+	accountClasses, paging, err := r.AccountingUsecase.GetAccountClassList(ctx, sql.AccountClassStatement{}, p)
+
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on get account classes", libErr.GetCode(err))
+	}
+
+	for _, accountClass := range accountClasses {
+		result.Data = append(result.Data, &model.AccountClass{
+			ID:       accountClass.ID,
+			Name:     accountClass.Name,
+			Type:     uint(accountClass.Type),
+			Inactive: accountClass.Inactive,
+		})
+	}
+
+	result.Paging = &model.Paging{
+		CurrentPage: paging.CurrentPage,
+		PageSize:    paging.PageSize,
+		Total:       paging.Total,
+	}
+
+	return &result, nil
+}
+
+// AccountClass is the resolver for the accountClass field.
+func (r *queryResolver) AccountClass(ctx context.Context, input model.AccountClassInput) (*model.AccountClass, error) {
+	accountClass, err := r.AccountingUsecase.GetAccountClass(ctx, sql.AccountClassStatement{
+		ID: int64(input.ID),
+	})
+
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on get account class", libErr.GetCode(err))
+	}
+
+	return &model.AccountClass{
+		ID:       accountClass.ID,
+		Name:     accountClass.Name,
+		Type:     uint(accountClass.Type),
+		Inactive: accountClass.Inactive,
+	}, nil
 }

@@ -5,4 +5,7 @@ const (
 	EcodeStoreAccountClassFailed
 	EcodeUpdateAccountClassFailed
 	EcodeDeleteAccountClassFailed
+	EcodeGetAccountClassListFailed
+	EcodeGetAccountClassListCountFailed
+	EcodeGetAccountClassFailed
 )
