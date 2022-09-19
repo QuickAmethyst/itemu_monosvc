@@ -61,11 +61,11 @@ func (w *writer) updateAccountClass(ctx context.Context, accountClass *domain.Ac
 
 	updateQuery := fmt.Sprintf(`
 		UPDATE account_classes
-		SET name = ?, type = ?
+		SET name = ?, type_id = ?
 		%s
 	`, whereClause)
 
-	args := []interface{}{accountClass.Name, accountClass.Type}
+	args := []interface{}{accountClass.Name, accountClass.TypeID}
 	result, err = w.db.ExecContext(ctx, w.db.Rebind(updateQuery), append(args, whereClauseArgs...)...)
 	if err != nil {
 		err = errors.PropagateWithCode(err, EcodeUpdateAccountClassFailed, "Update account class failed")
@@ -77,10 +77,10 @@ func (w *writer) updateAccountClass(ctx context.Context, accountClass *domain.Ac
 
 func (w *writer) StoreAccountClass(ctx context.Context, accountClass *domain.AccountClass) (err error) {
 	err = w.db.QueryRowContext(ctx, `
-		INSERT INTO account_classes (name, type, inactive)
+		INSERT INTO account_classes (name, type_id, inactive)
 		VALUES ($1, $2, $3)
 		RETURNING id
-	`, accountClass.Name, accountClass.Type, accountClass.Inactive).Scan(&accountClass.ID)
+	`, accountClass.Name, accountClass.TypeID, accountClass.Inactive).Scan(&accountClass.ID)
 
 	if err != nil {
 		err = errors.PropagateWithCode(err, EcodeStoreAccountClassFailed, "Insert account class failed")

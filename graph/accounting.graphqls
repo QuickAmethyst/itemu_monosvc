@@ -19,14 +19,14 @@ input AccountClassInput {
 
 input WriteAccountClassesInput {
     name: String!
-    type: Uint!
+    typeID: Uint!
     inactive: Boolean
 }
 
 type AccountClass {
     id: ID!
     name: String!
-    type: Uint!
+    typeID: Uint!
     inactive: Boolean
 }
 

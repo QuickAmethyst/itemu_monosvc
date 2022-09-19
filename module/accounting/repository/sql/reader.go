@@ -57,7 +57,7 @@ func (r *reader) GetAccountClassList(ctx context.Context, stmt AccountClassState
 		return
 	}
 
-	selectQuery := fmt.Sprintf("SELECT id, name, type, inactive %s %s %s", fromClause, whereClause, limitClause)
+	selectQuery := fmt.Sprintf("SELECT id, name, type_id, inactive %s %s %s", fromClause, whereClause, limitClause)
 	countQuery := fmt.Sprintf("SELECT COUNT(*) %s %s", fromClause, whereClause)
 
 	if err = r.db.SelectContext(ctx, &result, r.db.Rebind(selectQuery), append(whereClauseArgs, limitClauseArgs...)...); err != nil {

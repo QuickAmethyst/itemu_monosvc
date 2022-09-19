@@ -29,7 +29,7 @@ func (r *mutationResolver) StoreAccountClass(ctx context.Context, input model.Wr
 	return &model.AccountClass{
 		ID:       accountClass.ID,
 		Name:     accountClass.Name,
-		Type:     uint(accountClass.Type),
+		TypeID:   uint(accountClass.TypeID),
 		Inactive: accountClass.Inactive,
 	}, nil
 }
@@ -50,7 +50,7 @@ func (r *mutationResolver) UpdateAccountClassByID(ctx context.Context, id int, i
 	return &model.AccountClass{
 		ID:       int64(id),
 		Name:     accountClass.Name,
-		Type:     uint(accountClass.Type),
+		TypeID:   uint(accountClass.TypeID),
 		Inactive: accountClass.Inactive,
 	}, nil
 }
@@ -88,7 +88,7 @@ func (r *queryResolver) AccountClasses(ctx context.Context, input *model.Account
 		result.Data = append(result.Data, &model.AccountClass{
 			ID:       accountClass.ID,
 			Name:     accountClass.Name,
-			Type:     uint(accountClass.Type),
+			TypeID:   uint(accountClass.TypeID),
 			Inactive: accountClass.Inactive,
 		})
 	}
@@ -116,7 +116,7 @@ func (r *queryResolver) AccountClass(ctx context.Context, input model.AccountCla
 	return &model.AccountClass{
 		ID:       accountClass.ID,
 		Name:     accountClass.Name,
-		Type:     uint(accountClass.Type),
+		TypeID:   uint(accountClass.TypeID),
 		Inactive: accountClass.Inactive,
 	}, nil
 }

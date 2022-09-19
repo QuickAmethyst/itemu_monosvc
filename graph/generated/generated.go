@@ -49,7 +49,7 @@ type ComplexityRoot struct {
 		ID       func(childComplexity int) int
 		Inactive func(childComplexity int) int
 		Name     func(childComplexity int) int
-		Type     func(childComplexity int) int
+		TypeID   func(childComplexity int) int
 	}
 
 	AccountClassesResult struct {
@@ -150,12 +150,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.AccountClass.Name(childComplexity), true
 
-	case "AccountClass.type":
-		if e.complexity.AccountClass.Type == nil {
+	case "AccountClass.typeID":
+		if e.complexity.AccountClass.TypeID == nil {
 			break
 		}
 
-		return e.complexity.AccountClass.Type(childComplexity), true
+		return e.complexity.AccountClass.TypeID(childComplexity), true
 
 	case "AccountClassesResult.data":
 		if e.complexity.AccountClassesResult.Data == nil {
@@ -478,14 +478,14 @@ input AccountClassInput {
 
 input WriteAccountClassesInput {
     name: String!
-    type: Uint!
+    typeID: Uint!
     inactive: Boolean
 }
 
 type AccountClass {
     id: ID!
     name: String!
-    type: Uint!
+    typeID: Uint!
     inactive: Boolean
 }
 
@@ -875,8 +875,8 @@ func (ec *executionContext) fieldContext_AccountClass_name(ctx context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _AccountClass_type(ctx context.Context, field graphql.CollectedField, obj *model.AccountClass) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_AccountClass_type(ctx, field)
+func (ec *executionContext) _AccountClass_typeID(ctx context.Context, field graphql.CollectedField, obj *model.AccountClass) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AccountClass_typeID(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -889,7 +889,7 @@ func (ec *executionContext) _AccountClass_type(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Type, nil
+		return obj.TypeID, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -906,7 +906,7 @@ func (ec *executionContext) _AccountClass_type(ctx context.Context, field graphq
 	return ec.marshalNUint2uint(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_AccountClass_type(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_AccountClass_typeID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AccountClass",
 		Field:      field,
@@ -1003,8 +1003,8 @@ func (ec *executionContext) fieldContext_AccountClassesResult_data(ctx context.C
 				return ec.fieldContext_AccountClass_id(ctx, field)
 			case "name":
 				return ec.fieldContext_AccountClass_name(ctx, field)
-			case "type":
-				return ec.fieldContext_AccountClass_type(ctx, field)
+			case "typeID":
+				return ec.fieldContext_AccountClass_typeID(ctx, field)
 			case "inactive":
 				return ec.fieldContext_AccountClass_inactive(ctx, field)
 			}
@@ -1285,8 +1285,8 @@ func (ec *executionContext) fieldContext_Mutation_storeAccountClass(ctx context.
 				return ec.fieldContext_AccountClass_id(ctx, field)
 			case "name":
 				return ec.fieldContext_AccountClass_name(ctx, field)
-			case "type":
-				return ec.fieldContext_AccountClass_type(ctx, field)
+			case "typeID":
+				return ec.fieldContext_AccountClass_typeID(ctx, field)
 			case "inactive":
 				return ec.fieldContext_AccountClass_inactive(ctx, field)
 			}
@@ -1350,8 +1350,8 @@ func (ec *executionContext) fieldContext_Mutation_updateAccountClassByID(ctx con
 				return ec.fieldContext_AccountClass_id(ctx, field)
 			case "name":
 				return ec.fieldContext_AccountClass_name(ctx, field)
-			case "type":
-				return ec.fieldContext_AccountClass_type(ctx, field)
+			case "typeID":
+				return ec.fieldContext_AccountClass_typeID(ctx, field)
 			case "inactive":
 				return ec.fieldContext_AccountClass_inactive(ctx, field)
 			}
@@ -1963,8 +1963,8 @@ func (ec *executionContext) fieldContext_Query_accountClass(ctx context.Context,
 				return ec.fieldContext_AccountClass_id(ctx, field)
 			case "name":
 				return ec.fieldContext_AccountClass_name(ctx, field)
-			case "type":
-				return ec.fieldContext_AccountClass_type(ctx, field)
+			case "typeID":
+				return ec.fieldContext_AccountClass_typeID(ctx, field)
 			case "inactive":
 				return ec.fieldContext_AccountClass_inactive(ctx, field)
 			}
@@ -4407,7 +4407,7 @@ func (ec *executionContext) unmarshalInputWriteAccountClassesInput(ctx context.C
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "type", "inactive"}
+	fieldsInOrder := [...]string{"name", "typeID", "inactive"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -4422,11 +4422,11 @@ func (ec *executionContext) unmarshalInputWriteAccountClassesInput(ctx context.C
 			if err != nil {
 				return it, err
 			}
-		case "type":
+		case "typeID":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
-			it.Type, err = ec.unmarshalNUint2uint(ctx, v)
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("typeID"))
+			it.TypeID, err = ec.unmarshalNUint2uint(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -4520,9 +4520,9 @@ func (ec *executionContext) _AccountClass(ctx context.Context, sel ast.Selection
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "type":
+		case "typeID":
 
-			out.Values[i] = ec._AccountClass_type(ctx, field, obj)
+			out.Values[i] = ec._AccountClass_typeID(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
