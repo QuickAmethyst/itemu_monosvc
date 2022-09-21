@@ -27,7 +27,7 @@ type db struct {
 }
 
 func (d *db) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
-	return d.db.ExecContext(ctx, query, args)
+	return d.db.ExecContext(ctx, query, args...)
 }
 
 func (d *db) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
@@ -51,7 +51,7 @@ func (d *db) QueryRowContext(ctx context.Context, query string, args ...interfac
 }
 
 func (d *db) QueryContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
-	return d.db.QueryxContext(ctx, query, args)
+	return d.db.QueryxContext(ctx, query, args...)
 }
 
 func (d *db) PingContext(ctx context.Context) error {

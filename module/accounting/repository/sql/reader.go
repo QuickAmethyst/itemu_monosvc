@@ -74,5 +74,5 @@ func (r *reader) GetAccountClassList(ctx context.Context, stmt AccountClassState
 }
 
 func NewReader(opt *Options) Reader {
-	return &reader{opt.SlaveDB}
+	return &reader{db: opt.SlaveDB}
 }

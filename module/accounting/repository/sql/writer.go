@@ -65,8 +65,8 @@ func (w *writer) updateAccountClass(ctx context.Context, accountClass *domain.Ac
 		%s
 	`, whereClause)
 
-	args := []interface{}{accountClass.Name, accountClass.TypeID}
-	result, err = w.db.ExecContext(ctx, w.db.Rebind(updateQuery), append(args, whereClauseArgs...)...)
+	args := append([]interface{}{accountClass.Name, accountClass.TypeID}, whereClauseArgs...)
+	result, err = w.db.ExecContext(ctx, w.db.Rebind(updateQuery), args...)
 	if err != nil {
 		err = errors.PropagateWithCode(err, EcodeUpdateAccountClassFailed, "Update account class failed")
 		return

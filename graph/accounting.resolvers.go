@@ -6,6 +6,7 @@ package graph
 import (
 	"context"
 
+	"github.com/QuickAmethyst/monosvc/graph/generated"
 	"github.com/QuickAmethyst/monosvc/graph/model"
 	"github.com/QuickAmethyst/monosvc/module/accounting/repository/sql"
 	libErr "github.com/QuickAmethyst/monosvc/stdlibgo/errors"
@@ -13,8 +14,17 @@ import (
 	qb "github.com/QuickAmethyst/monosvc/stdlibgo/querybuilder/sql"
 )
 
+// Type is the resolver for the type field.
+func (r *accountClassResolver) Type(ctx context.Context, obj *model.AccountClass) (*model.AccountClassType, error) {
+	accountClassType := r.AccountingUsecase.GetAccountClassTypeByID(ctx, obj.TypeID)
+	return &model.AccountClassType{
+		ID:   accountClassType.ID,
+		Name: accountClassType.Name,
+	}, nil
+}
+
 // StoreAccountClass is the resolver for the storeAccountClass field.
-func (r *mutationResolver) StoreAccountClass(ctx context.Context, input model.WriteAccountClassesInput) (*model.AccountClass, error) {
+func (r *mutationResolver) StoreAccountClass(ctx context.Context, input model.WriteAccountClassInput) (*model.AccountClass, error) {
 	accountClass, err := input.Domain()
 	if err != nil {
 		r.Logger.Error(err.Error())
@@ -29,13 +39,13 @@ func (r *mutationResolver) StoreAccountClass(ctx context.Context, input model.Wr
 	return &model.AccountClass{
 		ID:       accountClass.ID,
 		Name:     accountClass.Name,
-		TypeID:   uint(accountClass.TypeID),
+		TypeID:   accountClass.TypeID,
 		Inactive: accountClass.Inactive,
 	}, nil
 }
 
 // UpdateAccountClassByID is the resolver for the updateAccountClassByID field.
-func (r *mutationResolver) UpdateAccountClassByID(ctx context.Context, id int, input model.WriteAccountClassesInput) (*model.AccountClass, error) {
+func (r *mutationResolver) UpdateAccountClassByID(ctx context.Context, id int, input model.WriteAccountClassInput) (*model.AccountClass, error) {
 	accountClass, err := input.Domain()
 	if err != nil {
 		r.Logger.Error(err.Error())
@@ -50,7 +60,7 @@ func (r *mutationResolver) UpdateAccountClassByID(ctx context.Context, id int, i
 	return &model.AccountClass{
 		ID:       int64(id),
 		Name:     accountClass.Name,
-		TypeID:   uint(accountClass.TypeID),
+		TypeID:   accountClass.TypeID,
 		Inactive: accountClass.Inactive,
 	}, nil
 }
@@ -88,7 +98,7 @@ func (r *queryResolver) AccountClasses(ctx context.Context, input *model.Account
 		result.Data = append(result.Data, &model.AccountClass{
 			ID:       accountClass.ID,
 			Name:     accountClass.Name,
-			TypeID:   uint(accountClass.TypeID),
+			TypeID:   accountClass.TypeID,
 			Inactive: accountClass.Inactive,
 		})
 	}
@@ -116,7 +126,36 @@ func (r *queryResolver) AccountClass(ctx context.Context, input model.AccountCla
 	return &model.AccountClass{
 		ID:       accountClass.ID,
 		Name:     accountClass.Name,
-		TypeID:   uint(accountClass.TypeID),
+		TypeID:   accountClass.TypeID,
 		Inactive: accountClass.Inactive,
 	}, nil
 }
+
+// AccountClassTypes is the resolver for the accountClassTypes field.
+func (r *queryResolver) AccountClassTypes(ctx context.Context) (*model.AccountClassTypesResult, error) {
+	result := make([]*model.AccountClassType, 0)
+	classTypes := r.AccountingUsecase.GetAccountClassTypeList(ctx)
+
+	for _, classType := range classTypes {
+		result = append(result, &model.AccountClassType{
+			ID:   classType.ID,
+			Name: classType.Name,
+		})
+	}
+
+	return &model.AccountClassTypesResult{Data: result}, nil
+}
+
+// AccountClassType is the resolver for the accountClassType field.
+func (r *queryResolver) AccountClassType(ctx context.Context, input model.AccountClassTypeInput) (*model.AccountClassType, error) {
+	classType := r.AccountingUsecase.GetAccountClassTypeByID(ctx, input.ID)
+	return &model.AccountClassType{
+		ID:   classType.ID,
+		Name: classType.Name,
+	}, nil
+}
+
+// AccountClass returns generated.AccountClassResolver implementation.
+func (r *Resolver) AccountClass() generated.AccountClassResolver { return &accountClassResolver{r} }
+
+type accountClassResolver struct{ *Resolver }
