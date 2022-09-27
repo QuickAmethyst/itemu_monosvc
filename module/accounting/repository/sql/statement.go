@@ -5,5 +5,7 @@ type AccountClassStatement struct {
 }
 
 type AccountGroupStatement struct {
-	ID int64
+	ID             int64
+	ParentID       int64
+	ParentIDIsNULL bool
 }

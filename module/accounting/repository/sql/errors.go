@@ -1,14 +1,16 @@
 package sql
 
 const (
-	EcodePreparedStatementFailed = iota + 1
-	EcodeStoreAccountClassFailed
+	EcodeStoreAccountClassFailed = iota + 1
 	EcodeUpdateAccountClassFailed
 	EcodeDeleteAccountClassFailed
 	EcodeGetAccountClassListFailed
-	EcodeGetAccountClassListCountFailed
 	EcodeGetAccountClassFailed
 	EcodeStoreAccountGroupFailed
 	EcodeUpdateAccountGroupFailed
 	EcodeDeleteAccountGroupFailed
+	EcodeGetAccountGroupFailed
+	EcodeGetAllTopLevelAccountGroupFailed
+	EcodeGetAllAccountGroupFailed
+	EcodeParentIDNotValid
 )

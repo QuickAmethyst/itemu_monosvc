@@ -1,17 +1,27 @@
 extend type Query {
-    accountClasses(input: AccountClassesInput): AccountClassesResult! @authenticated
+    accountClasses: [AccountClass!]! @authenticated
     accountClass(input: AccountClassInput!): AccountClass! @authenticated
+
     accountClassTypes: AccountClassTypesResult! @authenticated
     accountClassType(input: AccountClassTypeInput!): AccountClassType! @authenticated
+
+    accountGroups(input: AccountGroupInput): [AccountGroup!]! @authenticated
+    accountGroup(input: AccountGroupInput!): AccountGroup! @authenticated
 }
 
 extend type Mutation {
     storeAccountClass(input: WriteAccountClassInput!): AccountClass! @authenticated
     updateAccountClassByID(id: Int!, input: WriteAccountClassInput!): AccountClass! @authenticated
     deleteAccountClassByID(id: Int!): Int! @authenticated
+
     storeAccountGroup(input: WriteAccountGroupInput!): AccountGroup! @authenticated
     updateAccountGroupByID(id: Int!, input: WriteAccountGroupInput!): AccountGroup! @authenticated
     deleteAccountGroupByID(id: Int!): Int! @authenticated
+}
+
+input AccountGroupInput {
+    id: Int
+    parentIDIsNULL: Boolean
 }
 
 input WriteAccountGroupInput {
@@ -19,10 +29,6 @@ input WriteAccountGroupInput {
     classID: Int!
     parentID: Int
     inactive: Boolean
-}
-
-input AccountClassesInput {
-    paging: PagingInput
 }
 
 input AccountClassInput {
@@ -52,11 +58,6 @@ type AccountClass {
     type: AccountClassType
 }
 
-type AccountClassesResult {
-    data: [AccountClass!]!
-    paging: Paging!
-}
-
 type AccountClassTypesResult {
     data: [AccountClassType!]!
 }
@@ -65,6 +66,9 @@ type AccountGroup {
     id: ID!
     name: String!
     classID: Int!
-    parentID: Int
-    inactive: Boolean
+    parentID: Int!
+    parent: AccountGroup
+    class: AccountClass
+    inactive: Boolean!
+    child: [AccountGroup!]!
 }

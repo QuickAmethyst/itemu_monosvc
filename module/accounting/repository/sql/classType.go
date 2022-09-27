@@ -1,4 +1,4 @@
-package usecase
+package sql
 
 import "github.com/QuickAmethyst/monosvc/module/accounting/domain"
 
@@ -19,3 +19,4 @@ var classTypes = map[int64]domain.AccountClassType{
 	COGSClassType:        {COGSClassType, "Cost of Good Solds"},
 	ExpenseClassType:     {ExpenseClassType, "Expense"},
 }
+

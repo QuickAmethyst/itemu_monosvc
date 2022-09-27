@@ -1,6 +1,8 @@
 package model
 
-import "github.com/QuickAmethyst/monosvc/module/accounting/domain"
+import (
+	"github.com/QuickAmethyst/monosvc/module/accounting/domain"
+)
 
 type AccountClass struct {
 	ID       int64  `json:"id"`
@@ -35,11 +37,6 @@ type AccountClassesInput struct {
 	Paging *PagingInput `json:"paging"`
 }
 
-type AccountClassesResult struct {
-	Data   []*AccountClass `json:"data"`
-	Paging *Paging         `json:"paging"`
-}
-
 type AccountClassTypeInput struct {
 	ID int64 `json:"id"`
 }
@@ -49,31 +46,38 @@ type AccountClassTypesResult struct {
 }
 
 type AccountGroup struct {
-	ID       int64 `json:"id"`
+	ID       int64  `json:"id"`
 	Name     string `json:"name"`
-	ClassID  int64    `json:"classID"`
-	ParentID *int64   `json:"parentID"`
-	Inactive *bool  `json:"inactive"`
+	ClassID  int64  `json:"classID"`
+	ParentID int64  `json:"parentID"`
+	Inactive bool   `json:"inactive"`
 }
 
 type WriteAccountGroupInput struct {
 	Name     string `json:"name"`
-	ClassID  int64    `json:"classID"`
-	ParentID *int64   `json:"parentID"`
+	ClassID  int64  `json:"classID"`
+	ParentID *int64 `json:"parentID"`
 	Inactive *bool  `json:"inactive"`
 }
 
-func (w *WriteAccountGroupInput) Domain() (accountGroup domain.AccountGroup) {
+func (w *WriteAccountGroupInput) Domain() (accountGroup domain.AccountGroup, err error) {
 	accountGroup.Name = w.Name
 	accountGroup.ClassID = w.ClassID
 
 	if w.ParentID != nil {
-		accountGroup.ParentID = *w.ParentID
+		if err = accountGroup.ParentID.Scan(*w.ParentID); err != nil {
+			return
+		}
 	}
 
 	if w.Inactive != nil {
 		accountGroup.Inactive = *w.Inactive
 	}
 
-	return accountGroup
+	return
+}
+
+type AccountGroupInput struct {
+	ID             int  `json:"id"`
+	ParentIDIsNULL bool `json:"parentIDIsNULL"`
 }

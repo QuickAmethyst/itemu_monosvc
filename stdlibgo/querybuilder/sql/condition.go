@@ -21,6 +21,7 @@ func (c *Condition) BuildQuery() (query string, args []interface{}, err error) {
 		var (
 			scopeQuery string
 			scopeArg   interface{}
+			skipArg    bool
 		)
 
 		fieldValue := strct.Field(i).Interface()
@@ -33,7 +34,7 @@ func (c *Condition) BuildQuery() (query string, args []interface{}, err error) {
 		fieldName := typeOfT.Field(i).Name
 		fieldStrategy := FieldStrategy(fieldName)
 
-		scopeQuery, scopeArg, err = c.buildScope(fieldStrategy, fieldValue)
+		scopeQuery, scopeArg, skipArg, err = c.buildScope(fieldStrategy, fieldValue)
 		if err != nil {
 			return
 		}
@@ -43,7 +44,10 @@ func (c *Condition) BuildQuery() (query string, args []interface{}, err error) {
 		}
 
 		query += scopeQuery + " "
-		args = append(args, scopeArg)
+
+		if !skipArg {
+			args = append(args, scopeArg)
+		}
 	}
 
 	if query != "" {
@@ -53,7 +57,7 @@ func (c *Condition) BuildQuery() (query string, args []interface{}, err error) {
 	return
 }
 
-func (c *Condition) buildScope(field FieldStrategy, value interface{}) (query string, arg interface{}, err error) {
+func (c *Condition) buildScope(field FieldStrategy, value interface{}) (query string, arg interface{}, skipArg bool, err error) {
 	arg = value
 
 	if field.IsLikeStatement() {
@@ -89,6 +93,21 @@ func (c *Condition) buildScope(field FieldStrategy, value interface{}) (query st
 	} else if field.IsInStatement() {
 		query += fmt.Sprintf("%s IN (?)", field.ColumnName())
 		return
+	}
+
+	if field.IsNull() {
+		switch value.(type) {
+		default:
+			err = fmt.Errorf("statement %s value must be a boolean", field)
+			return
+		case bool:
+			if value == true {
+				skipArg = true
+				query += fmt.Sprintf("%s IS NULL", field.ColumnName())
+			}
+
+			return
+		}
 	}
 
 	query += fmt.Sprintf("%s = ?", field.ColumnName())

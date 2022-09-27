@@ -2,6 +2,7 @@ package sql
 
 import (
 	"context"
+	goErr "errors"
 	"fmt"
 	"github.com/QuickAmethyst/monosvc/module/accounting/domain"
 	"github.com/QuickAmethyst/monosvc/stdlibgo/errors"
@@ -14,6 +15,7 @@ type Writer interface {
 	StoreAccountClass(ctx context.Context, accountClass *domain.AccountClass) (err error)
 	UpdateAccountClassByID(ctx context.Context, id int64, accountClass *domain.AccountClass) (err error)
 	DeleteAccountClassByID(ctx context.Context, id int64) (err error)
+
 	StoreAccountGroup(ctx context.Context, accountClassGroup *domain.AccountGroup) (err error)
 	UpdateAccountGroupByID(ctx context.Context, id int64, accountGroup *domain.AccountGroup) (err error)
 	DeleteAccountGroupByID(ctx context.Context, id int64) (err error)
@@ -22,9 +24,27 @@ type Writer interface {
 type writer struct {
 	logger logger.Logger
 	db     sql.DB
+	reader Reader
 }
 
 func (w *writer) StoreAccountGroup(ctx context.Context, accountGroup *domain.AccountGroup) (err error) {
+	if accountGroup.ParentID.Valid {
+		var parentAccountGroup domain.AccountGroup
+
+		parentAccountGroup, err = w.reader.GetAccountGroupByID(ctx, accountGroup.ParentID.Int64)
+		if err != nil {
+			err = errors.PropagateWithCode(err, errors.GetCode(err), "Error on get parent account group")
+			return
+		}
+
+		if parentAccountGroup.ParentID.Valid {
+			err = errors.PropagateWithCode(goErr.New("invalid parent id"), EcodeParentIDNotValid, "cannot set parent from another account group child")
+			return
+		}
+
+		accountGroup.ClassID = parentAccountGroup.ClassID
+	}
+
 	err = w.db.QueryRowContext(ctx, `
 		INSERT INTO account_groups (parent_id, class_id, name, inactive)
 		VALUES ($1, $2, $3, $4)
@@ -46,6 +66,13 @@ func (w *writer) UpdateAccountGroupByID(ctx context.Context, id int64, accountGr
 }
 
 func (w *writer) updateAccountGroup(ctx context.Context, accountGroup *domain.AccountGroup, where AccountGroupStatement) (result sql.Result, err error) {
+	if accountGroup.ParentID.Valid && accountGroup.ID != 0 {
+		if accountGroup.ParentID.Int64 == accountGroup.ID {
+			err = errors.PropagateWithCode(goErr.New("invalid parent id"), EcodeParentIDNotValid, "cannot set parent with the same account group")
+			return
+		}
+	}
+
 	whereClause, whereClauseArgs, err := qb.NewWhereClause(where)
 	if err != nil {
 		err = errors.PropagateWithCode(err, EcodeUpdateAccountGroupFailed, "Failed on select account group")
@@ -60,7 +87,7 @@ func (w *writer) updateAccountGroup(ctx context.Context, accountGroup *domain.Ac
 
 	args := append(
 		[]interface{}{accountGroup.ParentID, accountGroup.ClassID, accountGroup.Name, accountGroup.Inactive},
-		whereClauseArgs...
+		whereClauseArgs...,
 	)
 
 	result, err = w.db.ExecContext(ctx, w.db.Rebind(updateQuery), args...)
@@ -153,6 +180,12 @@ func (w *writer) updateAccountClass(ctx context.Context, accountClass *domain.Ac
 }
 
 func (w *writer) StoreAccountClass(ctx context.Context, accountClass *domain.AccountClass) (err error) {
+	classType := classTypes[accountClass.TypeID]
+	if classType.ID == 0 {
+		err = errors.PropagateWithCode(err, EcodeStoreAccountClassFailed, "Type not valid")
+		return
+	}
+
 	err = w.db.QueryRowContext(ctx, `
 		INSERT INTO account_classes (name, type_id, inactive)
 		VALUES ($1, $2, $3)
@@ -167,6 +200,6 @@ func (w *writer) StoreAccountClass(ctx context.Context, accountClass *domain.Acc
 	return
 }
 
-func NewWriter(opt *Options) Writer {
-	return &writer{opt.Logger, opt.MasterDB}
+func NewWriter(opt *Options, reader Reader) Writer {
+	return &writer{opt.Logger, opt.MasterDB, reader}
 }

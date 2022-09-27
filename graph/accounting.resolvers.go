@@ -5,13 +5,11 @@ package graph
 
 import (
 	"context"
-
 	"github.com/QuickAmethyst/monosvc/graph/generated"
 	"github.com/QuickAmethyst/monosvc/graph/model"
 	"github.com/QuickAmethyst/monosvc/module/accounting/repository/sql"
 	libErr "github.com/QuickAmethyst/monosvc/stdlibgo/errors"
 	sdkGraphql "github.com/QuickAmethyst/monosvc/stdlibgo/graphql"
-	qb "github.com/QuickAmethyst/monosvc/stdlibgo/querybuilder/sql"
 )
 
 // Type is the resolver for the type field.
@@ -21,6 +19,72 @@ func (r *accountClassResolver) Type(ctx context.Context, obj *model.AccountClass
 		ID:   accountClassType.ID,
 		Name: accountClassType.Name,
 	}, nil
+}
+
+// Parent is the resolver for the parent field.
+func (r *accountGroupResolver) Parent(ctx context.Context, obj *model.AccountGroup) (*model.AccountGroup, error) {
+	if obj == nil || obj.ParentID == 0 {
+		return nil, nil
+	}
+
+	accountGroup, err := r.AccountingUsecase.GetAccountGroupByID(ctx, obj.ParentID)
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on get account group parent", libErr.GetCode(err))
+	}
+
+	return &model.AccountGroup{
+		ID:       accountGroup.ID,
+		Name:     accountGroup.Name,
+		ClassID:  accountGroup.ClassID,
+		ParentID: accountGroup.ParentID.Int64,
+		Inactive: accountGroup.Inactive,
+	}, nil
+}
+
+// Class is the resolver for the class field.
+func (r *accountGroupResolver) Class(ctx context.Context, obj *model.AccountGroup) (*model.AccountClass, error) {
+	if obj == nil || obj.ClassID == 0 {
+		return nil, nil
+	}
+
+	accountClass, err := r.AccountingUsecase.GetAccountClassByID(ctx, obj.ClassID)
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on get account group class", libErr.GetCode(err))
+	}
+
+	return &model.AccountClass{
+		ID:       accountClass.ID,
+		Name:     accountClass.Name,
+		TypeID:   accountClass.TypeID,
+		Inactive: accountClass.Inactive,
+	}, nil
+}
+
+// Child is the resolver for the child field.
+func (r *accountGroupResolver) Child(ctx context.Context, obj *model.AccountGroup) ([]*model.AccountGroup, error) {
+	accountGroups, err := r.AccountingUsecase.GetAllTopLevelAccountGroup(ctx, sql.AccountGroupStatement{
+		ParentID: obj.ID,
+	})
+
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on get account group childs", libErr.GetCode(err))
+	}
+
+	result := make([]*model.AccountGroup, len(accountGroups))
+	for i, accountGroup := range accountGroups {
+		result[i] = &model.AccountGroup{
+			ID:       accountGroup.ID,
+			Name:     accountGroup.Name,
+			ClassID:  accountGroup.ClassID,
+			ParentID: accountGroup.ParentID.Int64,
+			Inactive: false,
+		}
+	}
+
+	return result, nil
 }
 
 // StoreAccountClass is the resolver for the storeAccountClass field.
@@ -69,9 +133,13 @@ func (r *mutationResolver) DeleteAccountClassByID(ctx context.Context, id int) (
 
 // StoreAccountGroup is the resolver for the storeAccountGroup field.
 func (r *mutationResolver) StoreAccountGroup(ctx context.Context, input model.WriteAccountGroupInput) (*model.AccountGroup, error) {
-	accountGroup := input.Domain()
+	accountGroup, err := input.Domain()
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed to create account group", libErr.GetCode(err))
+	}
 
-	if err := r.Resolver.AccountingUsecase.StoreAccountGroup(ctx, &accountGroup); err != nil {
+	if err = r.Resolver.AccountingUsecase.StoreAccountGroup(ctx, &accountGroup); err != nil {
 		r.Logger.Error(err.Error())
 		return nil, sdkGraphql.NewError(err, "Failed to create account group", libErr.GetCode(err))
 	}
@@ -80,14 +148,17 @@ func (r *mutationResolver) StoreAccountGroup(ctx context.Context, input model.Wr
 		ID:       accountGroup.ID,
 		Name:     accountGroup.Name,
 		ClassID:  accountGroup.ClassID,
-		ParentID: &accountGroup.ParentID,
-		Inactive: &accountGroup.Inactive,
+		ParentID: accountGroup.ParentID.Int64,
+		Inactive: accountGroup.Inactive,
 	}, nil
 }
 
 // UpdateAccountGroupByID is the resolver for the updateAccountGroupByID field.
 func (r *mutationResolver) UpdateAccountGroupByID(ctx context.Context, id int, input model.WriteAccountGroupInput) (*model.AccountGroup, error) {
-	accountGroup := input.Domain()
+	accountGroup, err := input.Domain()
+	if err != nil {
+		return nil, sdkGraphql.NewError(err, "Failed to update account group", libErr.GetCode(err))
+	}
 
 	if err := r.Resolver.AccountingUsecase.UpdateAccountGroupByID(ctx, int64(id), &accountGroup); err != nil {
 		return nil, sdkGraphql.NewError(err, "Failed to update account group", libErr.GetCode(err))
@@ -97,8 +168,8 @@ func (r *mutationResolver) UpdateAccountGroupByID(ctx context.Context, id int, i
 		ID:       accountGroup.ID,
 		Name:     accountGroup.Name,
 		ClassID:  accountGroup.ClassID,
-		ParentID: &accountGroup.ParentID,
-		Inactive: &accountGroup.Inactive,
+		ParentID: accountGroup.ParentID.Int64,
+		Inactive: accountGroup.Inactive,
 	}, nil
 }
 
@@ -113,40 +184,24 @@ func (r *mutationResolver) DeleteAccountGroupByID(ctx context.Context, id int) (
 }
 
 // AccountClasses is the resolver for the accountClasses field.
-func (r *queryResolver) AccountClasses(ctx context.Context, input *model.AccountClassesInput) (*model.AccountClassesResult, error) {
-	var (
-		result model.AccountClassesResult
-		p      qb.Paging
-	)
-
-	if input.Paging != nil {
-		p.PageSize = input.Paging.PageSize
-		p.CurrentPage = input.Paging.CurrentPage
-	}
-
-	accountClasses, paging, err := r.AccountingUsecase.GetAccountClassList(ctx, sql.AccountClassStatement{}, p)
-
+func (r *queryResolver) AccountClasses(ctx context.Context) ([]*model.AccountClass, error) {
+	accountClasses, err := r.AccountingUsecase.GetAllAccountClass(ctx, sql.AccountClassStatement{})
 	if err != nil {
 		r.Logger.Error(err.Error())
 		return nil, sdkGraphql.NewError(err, "Failed on get account classes", libErr.GetCode(err))
 	}
 
-	for _, accountClass := range accountClasses {
-		result.Data = append(result.Data, &model.AccountClass{
+	result := make([]*model.AccountClass, len(accountClasses))
+	for i, accountClass := range accountClasses {
+		result[i] = &model.AccountClass{
 			ID:       accountClass.ID,
 			Name:     accountClass.Name,
 			TypeID:   accountClass.TypeID,
 			Inactive: accountClass.Inactive,
-		})
+		}
 	}
 
-	result.Paging = &model.Paging{
-		CurrentPage: paging.CurrentPage,
-		PageSize:    paging.PageSize,
-		Total:       paging.Total,
-	}
-
-	return &result, nil
+	return result, nil
 }
 
 // AccountClass is the resolver for the accountClass field.
@@ -192,7 +247,59 @@ func (r *queryResolver) AccountClassType(ctx context.Context, input model.Accoun
 	}, nil
 }
 
+// AccountGroups is the resolver for the accountGroups field.
+func (r *queryResolver) AccountGroups(ctx context.Context, input *model.AccountGroupInput) ([]*model.AccountGroup, error) {
+	var statement sql.AccountGroupStatement
+	if input != nil {
+		statement = sql.AccountGroupStatement{ParentIDIsNULL: input.ParentIDIsNULL}
+	}
+
+	accountGroups, err := r.AccountingUsecase.GetAllAccountGroup(ctx, statement)
+
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on get account groups", libErr.GetCode(err))
+	}
+
+	result := make([]*model.AccountGroup, len(accountGroups))
+	for i, accountGroup := range accountGroups {
+		result[i] = &model.AccountGroup{
+			ID:       accountGroup.ID,
+			Name:     accountGroup.Name,
+			ClassID:  accountGroup.ClassID,
+			ParentID: accountGroup.ParentID.Int64,
+			Inactive: accountGroup.Inactive,
+		}
+	}
+
+	return result, nil
+}
+
+// AccountGroup is the resolver for the accountGroup field.
+func (r *queryResolver) AccountGroup(ctx context.Context, input model.AccountGroupInput) (*model.AccountGroup, error) {
+	accountGroup, err := r.AccountingUsecase.GetAccountGroup(ctx, sql.AccountGroupStatement{
+		ID: int64(input.ID),
+	})
+
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on get account group", libErr.GetCode(err))
+	}
+
+	return &model.AccountGroup{
+		ID:       accountGroup.ID,
+		Name:     accountGroup.Name,
+		ParentID: accountGroup.ParentID.Int64,
+		ClassID:  accountGroup.ClassID,
+		Inactive: accountGroup.Inactive,
+	}, nil
+}
+
 // AccountClass returns generated.AccountClassResolver implementation.
 func (r *Resolver) AccountClass() generated.AccountClassResolver { return &accountClassResolver{r} }
 
+// AccountGroup returns generated.AccountGroupResolver implementation.
+func (r *Resolver) AccountGroup() generated.AccountGroupResolver { return &accountGroupResolver{r} }
+
 type accountClassResolver struct{ *Resolver }
+type accountGroupResolver struct{ *Resolver }

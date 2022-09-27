@@ -4,35 +4,53 @@ import (
 	"context"
 	"github.com/QuickAmethyst/monosvc/module/accounting/domain"
 	"github.com/QuickAmethyst/monosvc/module/accounting/repository/sql"
-	qb "github.com/QuickAmethyst/monosvc/stdlibgo/querybuilder/sql"
 )
 
 type Reader interface {
-	GetAccountClassList(ctx context.Context, stmt sql.AccountClassStatement, p qb.Paging) (result []domain.AccountClass, paging qb.Paging, err error)
+	GetAllAccountClass(ctx context.Context, stmt sql.AccountClassStatement) (result []domain.AccountClass, err error)
 	GetAccountClass(ctx context.Context, stmt sql.AccountClassStatement) (accountClass domain.AccountClass, err error)
 	GetAccountClassByID(ctx context.Context, id int64) (accountClass domain.AccountClass, err error)
+
 	GetAccountClassTypeList(ctx context.Context) (result []domain.AccountClassType)
 	GetAccountClassTypeByID(ctx context.Context, id int64) (accountClassType domain.AccountClassType)
+
+	GetAllAccountGroup(ctx context.Context, stmt sql.AccountGroupStatement) (result []domain.AccountGroup, err error)
+	GetAllTopLevelAccountGroup(ctx context.Context, stmt sql.AccountGroupStatement) (result []domain.AccountGroup, err error)
+	GetAccountGroup(ctx context.Context, stmt sql.AccountGroupStatement) (accountGroup domain.AccountGroup, err error)
+	GetAccountGroupByID(ctx context.Context, id int64) (accountGroup domain.AccountGroup, err error)
 }
 
 type reader struct {
 	AccountingSQL sql.SQL
 }
 
-func (r *reader) GetAccountClassTypeList(_ context.Context) (result []domain.AccountClassType) {
-	result = make([]domain.AccountClassType, len(classTypes))
-	for id, classType := range classTypes {
-		result[id - 1] = classType
-	}
-	return
+func (r *reader) GetAllTopLevelAccountGroup(ctx context.Context, stmt sql.AccountGroupStatement) (result []domain.AccountGroup, err error) {
+	stmt.ParentIDIsNULL = true
+	return r.GetAllAccountGroup(ctx, stmt)
 }
 
-func (r *reader) GetAccountClassTypeByID(_ context.Context, id int64) (accountClassType domain.AccountClassType) {
-	return classTypes[id]
+func (r *reader) GetAllAccountGroup(ctx context.Context, stmt sql.AccountGroupStatement) (result []domain.AccountGroup, err error) {
+	return r.AccountingSQL.GetAllAccountGroup(ctx, stmt)
 }
 
-func (r *reader) GetAccountClassList(ctx context.Context, stmt sql.AccountClassStatement, p qb.Paging) (result []domain.AccountClass, paging qb.Paging, err error) {
-	return r.AccountingSQL.GetAccountClassList(ctx, stmt, p)
+func (r *reader) GetAccountGroup(ctx context.Context, stmt sql.AccountGroupStatement) (accountGroup domain.AccountGroup, err error) {
+	return r.AccountingSQL.GetAccountGroup(ctx, stmt)
+}
+
+func (r *reader) GetAccountGroupByID(ctx context.Context, id int64) (accountGroup domain.AccountGroup, err error) {
+	return r.AccountingSQL.GetAccountGroupByID(ctx, id)
+}
+
+func (r *reader) GetAccountClassTypeList(ctx context.Context) (result []domain.AccountClassType) {
+	return r.AccountingSQL.GetAccountClassTypeList(ctx)
+}
+
+func (r *reader) GetAccountClassTypeByID(ctx context.Context, id int64) (accountClassType domain.AccountClassType) {
+	return r.AccountingSQL.GetAccountClassTypeByID(ctx, id)
+}
+
+func (r *reader) GetAllAccountClass(ctx context.Context, stmt sql.AccountClassStatement) (result []domain.AccountClass, err error) {
+	return r.AccountingSQL.GetAllAccountClass(ctx, stmt)
 }
 
 func (r *reader) GetAccountClass(ctx context.Context, stmt sql.AccountClassStatement) (accountClass domain.AccountClass, err error) {

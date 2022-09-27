@@ -6,6 +6,6 @@ CREATE TABLE IF NOT EXISTS account_groups
     name      TEXT NOT NULL UNIQUE,
     inactive  BOOLEAN DEFAULT FALSE,
 
-    CONSTRAINT parent FOREIGN KEY (parent_id) REFERENCES account_groups (id),
+    CONSTRAINT fk_parent_id FOREIGN KEY (parent_id) REFERENCES account_groups (id),
     CONSTRAINT fk_class_id FOREIGN KEY (class_id) REFERENCES account_classes (id)
 )

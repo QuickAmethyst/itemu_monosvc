@@ -10,6 +10,7 @@ type Writer interface {
 	StoreAccountClass(ctx context.Context, accountClasses *domain.AccountClass) (err error)
 	UpdateAccountClassByID(ctx context.Context, id int64, accountClass *domain.AccountClass) (err error)
 	DeleteAccountClassByID(ctx context.Context, id int64) (err error)
+
 	StoreAccountGroup(ctx context.Context, accountGroup *domain.AccountGroup) (err error)
 	UpdateAccountGroupByID(ctx context.Context, id int64, accountGroup *domain.AccountGroup) (err error)
 	DeleteAccountGroupByID(ctx context.Context, id int64) (err error)

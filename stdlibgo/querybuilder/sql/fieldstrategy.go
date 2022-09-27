@@ -10,7 +10,7 @@ var (
 	// https://github.com/golang/lint/blob/master/lint.go#L770
 	commonInitialisms         = []string{"API", "ASCII", "CPU", "CSS", "DNS", "EOF", "GUID", "HTML", "HTTP", "HTTPS", "ID", "IP", "JSON", "LHS", "QPS", "RAM", "RHS", "RPC", "SLA", "SMTP", "SSH", "TLS", "TTL", "UID", "UI", "UUID", "URI", "URL", "UTF8", "VM", "XML", "XSRF", "XSS"}
 	commonInitialismsReplacer *strings.Replacer
-	statementSuffixes         = []string{"_not_eq", "_like", "_gte", "_lte", "_not_in", "_in"}
+	statementSuffixes         = []string{"_not_eq", "_like", "_gte", "_lte", "_not_in", "_in", "_is_null"}
 )
 
 func init() {
@@ -34,7 +34,8 @@ func (f FieldStrategy) IsEqualStatement() bool {
 		!f.IsGreaterThanEqualStatement() &&
 		!f.IsLessThanEqualStatement() &&
 		!f.IsInStatement() &&
-		!f.IsNotInStatement()
+		!f.IsNotInStatement() &&
+		!f.IsNull()
 }
 
 func (f FieldStrategy) IsNotEqualStatement() bool {
@@ -59,6 +60,10 @@ func (f FieldStrategy) IsInStatement() bool {
 
 func (f FieldStrategy) IsNotInStatement() bool {
 	return strings.HasSuffix(string(f), "NotIN")
+}
+
+func (f FieldStrategy) IsNull() bool {
+	return strings.HasSuffix(string(f), "IsNULL")
 }
 
 func (f FieldStrategy) ColumnName() string {
