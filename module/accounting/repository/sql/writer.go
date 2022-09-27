@@ -14,11 +14,88 @@ type Writer interface {
 	StoreAccountClass(ctx context.Context, accountClass *domain.AccountClass) (err error)
 	UpdateAccountClassByID(ctx context.Context, id int64, accountClass *domain.AccountClass) (err error)
 	DeleteAccountClassByID(ctx context.Context, id int64) (err error)
+	StoreAccountGroup(ctx context.Context, accountClassGroup *domain.AccountGroup) (err error)
+	UpdateAccountGroupByID(ctx context.Context, id int64, accountGroup *domain.AccountGroup) (err error)
+	DeleteAccountGroupByID(ctx context.Context, id int64) (err error)
 }
 
 type writer struct {
 	logger logger.Logger
 	db     sql.DB
+}
+
+func (w *writer) StoreAccountGroup(ctx context.Context, accountGroup *domain.AccountGroup) (err error) {
+	err = w.db.QueryRowContext(ctx, `
+		INSERT INTO account_groups (parent_id, class_id, name, inactive)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id
+	`, accountGroup.ParentID, accountGroup.ClassID, accountGroup.Name, accountGroup.Inactive,
+	).Scan(&accountGroup.ID)
+
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeStoreAccountGroupFailed, "Insert account group failed")
+		return
+	}
+
+	return
+}
+
+func (w *writer) UpdateAccountGroupByID(ctx context.Context, id int64, accountGroup *domain.AccountGroup) (err error) {
+	_, err = w.updateAccountGroup(ctx, accountGroup, AccountGroupStatement{ID: id})
+	return
+}
+
+func (w *writer) updateAccountGroup(ctx context.Context, accountGroup *domain.AccountGroup, where AccountGroupStatement) (result sql.Result, err error) {
+	whereClause, whereClauseArgs, err := qb.NewWhereClause(where)
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeUpdateAccountGroupFailed, "Failed on select account group")
+		return
+	}
+
+	updateQuery := fmt.Sprintf(`
+		UPDATE account_groups
+		SET parent_id = ?, class_id = ?, name = ?, inactive = ?
+		%s
+	`, whereClause)
+
+	args := append(
+		[]interface{}{accountGroup.ParentID, accountGroup.ClassID, accountGroup.Name, accountGroup.Inactive},
+		whereClauseArgs...
+	)
+
+	result, err = w.db.ExecContext(ctx, w.db.Rebind(updateQuery), args...)
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeUpdateAccountGroupFailed, "Update account group failed")
+		return
+	}
+
+	return
+}
+
+func (w *writer) DeleteAccountGroupByID(ctx context.Context, id int64) (err error) {
+	_, err = w.deleteAccountGroup(ctx, AccountGroupStatement{ID: id})
+	return
+}
+
+func (w *writer) deleteAccountGroup(ctx context.Context, where AccountGroupStatement) (result sql.Result, err error) {
+	whereClause, whereClauseArgs, err := qb.NewWhereClause(where)
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeDeleteAccountGroupFailed, "Failed on select account class")
+		return
+	}
+
+	deleteQuery := fmt.Sprintf(`
+		DELETE FROM account_classes
+		%s
+	`, whereClause)
+
+	result, err = w.db.ExecContext(ctx, w.db.Rebind(deleteQuery), whereClauseArgs...)
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeDeleteAccountGroupFailed, "Update account class failed")
+		return
+	}
+
+	return
 }
 
 func (w *writer) DeleteAccountClassByID(ctx context.Context, id int64) (err error) {

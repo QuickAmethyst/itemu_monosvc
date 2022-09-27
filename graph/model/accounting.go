@@ -15,7 +15,7 @@ type WriteAccountClassInput struct {
 	Inactive bool   `json:"inactive"`
 }
 
-func (w *WriteAccountClassInput) Domain() (accountClass domain.AccountClass, err error) {
+func (w *WriteAccountClassInput) Domain() (accountClass domain.AccountClass) {
 	accountClass.Name = w.Name
 	accountClass.TypeID = w.TypeID
 	accountClass.Inactive = w.Inactive
@@ -46,4 +46,34 @@ type AccountClassTypeInput struct {
 
 type AccountClassTypesResult struct {
 	Data []*AccountClassType `json:"data"`
+}
+
+type AccountGroup struct {
+	ID       int64 `json:"id"`
+	Name     string `json:"name"`
+	ClassID  int64    `json:"classID"`
+	ParentID *int64   `json:"parentID"`
+	Inactive *bool  `json:"inactive"`
+}
+
+type WriteAccountGroupInput struct {
+	Name     string `json:"name"`
+	ClassID  int64    `json:"classID"`
+	ParentID *int64   `json:"parentID"`
+	Inactive *bool  `json:"inactive"`
+}
+
+func (w *WriteAccountGroupInput) Domain() (accountGroup domain.AccountGroup) {
+	accountGroup.Name = w.Name
+	accountGroup.ClassID = w.ClassID
+
+	if w.ParentID != nil {
+		accountGroup.ParentID = *w.ParentID
+	}
+
+	if w.Inactive != nil {
+		accountGroup.Inactive = *w.Inactive
+	}
+
+	return accountGroup
 }

@@ -9,6 +9,16 @@ extend type Mutation {
     storeAccountClass(input: WriteAccountClassInput!): AccountClass! @authenticated
     updateAccountClassByID(id: Int!, input: WriteAccountClassInput!): AccountClass! @authenticated
     deleteAccountClassByID(id: Int!): Int! @authenticated
+    storeAccountGroup(input: WriteAccountGroupInput!): AccountGroup! @authenticated
+    updateAccountGroupByID(id: Int!, input: WriteAccountGroupInput!): AccountGroup! @authenticated
+    deleteAccountGroupByID(id: Int!): Int! @authenticated
+}
+
+input WriteAccountGroupInput {
+    name: String!
+    classID: Int!
+    parentID: Int
+    inactive: Boolean
 }
 
 input AccountClassesInput {
@@ -49,4 +59,12 @@ type AccountClassesResult {
 
 type AccountClassTypesResult {
     data: [AccountClassType!]!
+}
+
+type AccountGroup {
+    id: ID!
+    name: String!
+    classID: Int!
+    parentID: Int
+    inactive: Boolean
 }

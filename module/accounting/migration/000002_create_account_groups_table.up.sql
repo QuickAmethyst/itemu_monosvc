@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS account_groups
 (
     id        SERIAL PRIMARY KEY,
-    parent_id int  NOT NULL,
+    parent_id int,
     class_id  int  NOT NULL,
     name      TEXT NOT NULL UNIQUE,
     inactive  BOOLEAN DEFAULT FALSE,

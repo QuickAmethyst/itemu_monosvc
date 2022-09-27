@@ -25,13 +25,9 @@ func (r *accountClassResolver) Type(ctx context.Context, obj *model.AccountClass
 
 // StoreAccountClass is the resolver for the storeAccountClass field.
 func (r *mutationResolver) StoreAccountClass(ctx context.Context, input model.WriteAccountClassInput) (*model.AccountClass, error) {
-	accountClass, err := input.Domain()
-	if err != nil {
-		r.Logger.Error(err.Error())
-		return nil, sdkGraphql.NewError(err, "Failed to read input", libErr.GetCode(err))
-	}
+	accountClass := input.Domain()
 
-	if err = r.Resolver.AccountingUsecase.StoreAccountClass(ctx, &accountClass); err != nil {
+	if err := r.Resolver.AccountingUsecase.StoreAccountClass(ctx, &accountClass); err != nil {
 		r.Logger.Error(err.Error())
 		return nil, sdkGraphql.NewError(err, "Failed on create account class", libErr.GetCode(err))
 	}
@@ -46,13 +42,9 @@ func (r *mutationResolver) StoreAccountClass(ctx context.Context, input model.Wr
 
 // UpdateAccountClassByID is the resolver for the updateAccountClassByID field.
 func (r *mutationResolver) UpdateAccountClassByID(ctx context.Context, id int, input model.WriteAccountClassInput) (*model.AccountClass, error) {
-	accountClass, err := input.Domain()
-	if err != nil {
-		r.Logger.Error(err.Error())
-		return nil, sdkGraphql.NewError(err, "Failed to read input", libErr.GetCode(err))
-	}
+	accountClass := input.Domain()
 
-	if err = r.Resolver.AccountingUsecase.UpdateAccountClassByID(ctx, int64(id), &accountClass); err != nil {
+	if err := r.Resolver.AccountingUsecase.UpdateAccountClassByID(ctx, int64(id), &accountClass); err != nil {
 		r.Logger.Error(err.Error())
 		return nil, sdkGraphql.NewError(err, "Failed on update account class", libErr.GetCode(err))
 	}
@@ -70,6 +62,51 @@ func (r *mutationResolver) DeleteAccountClassByID(ctx context.Context, id int) (
 	if err := r.AccountingUsecase.DeleteAccountClassByID(ctx, int64(id)); err != nil {
 		r.Logger.Error(err.Error())
 		return id, sdkGraphql.NewError(err, "Failed to delete account class", libErr.GetCode(err))
+	}
+
+	return id, nil
+}
+
+// StoreAccountGroup is the resolver for the storeAccountGroup field.
+func (r *mutationResolver) StoreAccountGroup(ctx context.Context, input model.WriteAccountGroupInput) (*model.AccountGroup, error) {
+	accountGroup := input.Domain()
+
+	if err := r.Resolver.AccountingUsecase.StoreAccountGroup(ctx, &accountGroup); err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed to create account group", libErr.GetCode(err))
+	}
+
+	return &model.AccountGroup{
+		ID:       accountGroup.ID,
+		Name:     accountGroup.Name,
+		ClassID:  accountGroup.ClassID,
+		ParentID: &accountGroup.ParentID,
+		Inactive: &accountGroup.Inactive,
+	}, nil
+}
+
+// UpdateAccountGroupByID is the resolver for the updateAccountGroupByID field.
+func (r *mutationResolver) UpdateAccountGroupByID(ctx context.Context, id int, input model.WriteAccountGroupInput) (*model.AccountGroup, error) {
+	accountGroup := input.Domain()
+
+	if err := r.Resolver.AccountingUsecase.UpdateAccountGroupByID(ctx, int64(id), &accountGroup); err != nil {
+		return nil, sdkGraphql.NewError(err, "Failed to update account group", libErr.GetCode(err))
+	}
+
+	return &model.AccountGroup{
+		ID:       accountGroup.ID,
+		Name:     accountGroup.Name,
+		ClassID:  accountGroup.ClassID,
+		ParentID: &accountGroup.ParentID,
+		Inactive: &accountGroup.Inactive,
+	}, nil
+}
+
+// DeleteAccountGroupByID is the resolver for the deleteAccountGroupByID field.
+func (r *mutationResolver) DeleteAccountGroupByID(ctx context.Context, id int) (int, error) {
+	if err := r.AccountingUsecase.DeleteAccountGroupByID(ctx, int64(id)); err != nil {
+		r.Logger.Error(err.Error())
+		return id, sdkGraphql.NewError(err, "Failed to delete account group", libErr.GetCode(err))
 	}
 
 	return id, nil

@@ -8,4 +8,7 @@ const (
 	EcodeGetAccountClassListFailed
 	EcodeGetAccountClassListCountFailed
 	EcodeGetAccountClassFailed
+	EcodeStoreAccountGroupFailed
+	EcodeUpdateAccountGroupFailed
+	EcodeDeleteAccountGroupFailed
 )
