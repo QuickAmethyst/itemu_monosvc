@@ -7,6 +7,9 @@ extend type Query {
 
     accountGroups(input: AccountGroupInput): [AccountGroup!]! @authenticated
     accountGroup(input: AccountGroupInput!): AccountGroup! @authenticated
+
+    accounts(input: AccountInput): [Account!]! @authenticated
+    account(input: AccountInput!): Account! @authenticated
 }
 
 extend type Mutation {
@@ -17,6 +20,20 @@ extend type Mutation {
     storeAccountGroup(input: WriteAccountGroupInput!): AccountGroup! @authenticated
     updateAccountGroupByID(id: Int!, input: WriteAccountGroupInput!): AccountGroup! @authenticated
     deleteAccountGroupByID(id: Int!): Int! @authenticated
+
+    storeAccount(input: WriteAccountInput!): Account! @authenticated
+    updateAccountByID(id: Int!, input: WriteAccountInput!): Account! @authenticated
+    deleteAccountByID(id: Int!): Int! @authenticated
+}
+
+input AccountInput {
+    id: Int
+}
+
+input WriteAccountInput {
+    name: String!
+    groupID: Int!
+    inactive: Boolean
 }
 
 input AccountGroupInput {
@@ -71,4 +88,12 @@ type AccountGroup {
     class: AccountClass
     inactive: Boolean!
     child: [AccountGroup!]!
+}
+
+type Account {
+    id: ID!
+    name: String!
+    groupID: Int!
+    inactive: Boolean!
+    group: AccountGroup!
 }

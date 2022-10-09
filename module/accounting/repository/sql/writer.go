@@ -19,6 +19,10 @@ type Writer interface {
 	StoreAccountGroup(ctx context.Context, accountClassGroup *domain.AccountGroup) (err error)
 	UpdateAccountGroupByID(ctx context.Context, id int64, accountGroup *domain.AccountGroup) (err error)
 	DeleteAccountGroupByID(ctx context.Context, id int64) (err error)
+
+	StoreAccount(ctx context.Context, account *domain.Account) (err error)
+	UpdateAccountByID(ctx context.Context, id int64, account *domain.Account) (err error)
+	DeleteAccountByID(ctx context.Context, id int64) (err error)
 }
 
 type writer struct {
@@ -27,8 +31,47 @@ type writer struct {
 	reader Reader
 }
 
+func (w *writer) StoreAccount(ctx context.Context, account *domain.Account) (err error) {
+	err = w.db.QueryRowContext(ctx, `
+		INSERT INTO accounts (name, group_id, inactive)
+		VALUES ($1, $2, $3)
+		RETURNING id
+	`, account.Name, account.GroupID, account.Inactive).Scan(&account.ID)
+
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeStoreAccountFailed, "Store account failed")
+		return
+	}
+
+	return
+}
+
+func (w *writer) UpdateAccountByID(ctx context.Context, id int64, account *domain.Account) (err error) {
+	dest := map[string]interface{} {
+		"name": account.Name,
+		"group_id": account.GroupID,
+		"inactive": account.Inactive,
+	}
+
+	if _, err = w.db.Updates(ctx, "accounts", dest, &AccountStatement{ID: id}); err != nil {
+		err = errors.PropagateWithCode(err, EcodeUpdateAccountFailed, "Update account by id failed")
+		return
+	}
+
+	return
+}
+
+func (w *writer) DeleteAccountByID(ctx context.Context, id int64) (err error) {
+	if _, err = w.db.Delete(ctx, "accounts", &AccountStatement{ID: id}); err != nil {
+		err = errors.PropagateWithCode(err, EcodeDeleteAccountFailed, "Delete account by id failed")
+		return
+	}
+
+	return
+}
+
 func (w *writer) StoreAccountGroup(ctx context.Context, accountGroup *domain.AccountGroup) (err error) {
-	if accountGroup.ParentID.Valid {
+	if accountGroup.ParentID.Valid && accountGroup.ParentID.Int64 != 0 {
 		var parentAccountGroup domain.AccountGroup
 
 		parentAccountGroup, err = w.reader.GetAccountGroupByID(ctx, accountGroup.ParentID.Int64)
@@ -133,7 +176,7 @@ func (w *writer) DeleteAccountClassByID(ctx context.Context, id int64) (err erro
 func (w *writer) deleteAccountClass(ctx context.Context, where AccountClassStatement) (result sql.Result, err error) {
 	whereClause, whereClauseArgs, err := qb.NewWhereClause(where)
 	if err != nil {
-		err = errors.PropagateWithCode(err, EcodeUpdateAccountClassFailed, "Failed on select account class")
+		err = errors.PropagateWithCode(err, EcodeUpdateAccountClassFailed, "Failed on delete account class")
 		return
 	}
 
@@ -144,7 +187,7 @@ func (w *writer) deleteAccountClass(ctx context.Context, where AccountClassState
 
 	result, err = w.db.ExecContext(ctx, w.db.Rebind(deleteQuery), whereClauseArgs...)
 	if err != nil {
-		err = errors.PropagateWithCode(err, EcodeDeleteAccountClassFailed, "Update account class failed")
+		err = errors.PropagateWithCode(err, EcodeDeleteAccountClassFailed, "Failed on delete account class")
 		return
 	}
 
@@ -186,11 +229,11 @@ func (w *writer) StoreAccountClass(ctx context.Context, accountClass *domain.Acc
 		return
 	}
 
-	err = w.db.QueryRowContext(ctx, `
+	err = w.db.QueryRowContext(ctx, w.db.Rebind(`
 		INSERT INTO account_classes (name, type_id, inactive)
-		VALUES ($1, $2, $3)
+		VALUES (?, ?, ?)
 		RETURNING id
-	`, accountClass.Name, accountClass.TypeID, accountClass.Inactive).Scan(&accountClass.ID)
+	`), accountClass.Name, accountClass.TypeID, accountClass.Inactive).Scan(&accountClass.ID)
 
 	if err != nil {
 		err = errors.PropagateWithCode(err, EcodeStoreAccountClassFailed, "Insert account class failed")

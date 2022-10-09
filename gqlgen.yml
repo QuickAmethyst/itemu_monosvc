@@ -67,8 +67,3 @@ models:
       - github.com/99designs/gqlgen/graphql.Uint
       - github.com/99designs/gqlgen/graphql.Uint64
       - github.com/99designs/gqlgen/graphql.Uint32
-
-  AccountClass:
-    fields:
-      type:
-        resolver: true

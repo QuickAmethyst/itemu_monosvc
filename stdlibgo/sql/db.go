@@ -3,6 +3,9 @@ package sql
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	qb "github.com/QuickAmethyst/monosvc/stdlibgo/querybuilder/sql"
+	"github.com/QuickAmethyst/monosvc/stdlibgo/utils"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -20,10 +23,68 @@ type DB interface {
 	PingContext(ctx context.Context) error
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	Updates(ctx context.Context, tableName string, dest interface{}, where interface{}) (sql.Result, error)
+	Delete(ctx context.Context, tableName string, whereStruct interface{}) (sql.Result, error)
 }
 
 type db struct {
 	db *sqlx.DB
+}
+
+func (d *db) Delete(ctx context.Context, tableName string, whereStruct interface{}) (result sql.Result, err error) {
+	var (
+		whereClause string
+		whereClauseArgs []interface{}
+	)
+
+	whereClause, whereClauseArgs, err = qb.NewWhereClause(whereStruct)
+	if err != nil {
+		if err == qb.ErrStmtNil {
+			err = ErrWhereStructNil
+		}
+
+		return
+	}
+
+	query := fmt.Sprintf("DELETE FROM %s %s", tableName, whereClause)
+
+	return d.ExecContext(ctx, d.Rebind(query), whereClauseArgs...)
+}
+
+func (d *db) Updates(ctx context.Context, tableName string, dest interface{}, whereStruct interface{}) (result sql.Result, err error) {
+	var (
+		whereClause, setClause string
+		whereClauseArgs, setClauseArgs   []interface{}
+	)
+
+	err = utils.ForIn(dest, func(key interface{}, value interface{}) error {
+		columnValue := value
+		columnName := qb.ColumnName(key.(string))
+
+		if setClause == "" {
+			setClause += fmt.Sprintf("SET %s = ?", columnName)
+		} else {
+			setClause += fmt.Sprintf(", %s = ?", columnName)
+		}
+
+		setClauseArgs = append(setClauseArgs, columnValue)
+
+		return nil
+	})
+
+	whereClause, whereClauseArgs, err = qb.NewWhereClause(whereStruct)
+	if err != nil {
+		if err == qb.ErrStmtNil {
+			err = ErrWhereStructNil
+		}
+
+		return
+	}
+
+	query := fmt.Sprintf("UPDATE %s %s %s", tableName, setClause, whereClause)
+	args := append(setClauseArgs, whereClauseArgs...)
+
+	return d.ExecContext(ctx, d.Rebind(query), args...)
 }
 
 func (d *db) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {

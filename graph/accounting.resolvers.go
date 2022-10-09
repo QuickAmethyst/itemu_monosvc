@@ -5,12 +5,34 @@ package graph
 
 import (
 	"context"
+
 	"github.com/QuickAmethyst/monosvc/graph/generated"
 	"github.com/QuickAmethyst/monosvc/graph/model"
 	"github.com/QuickAmethyst/monosvc/module/accounting/repository/sql"
 	libErr "github.com/QuickAmethyst/monosvc/stdlibgo/errors"
 	sdkGraphql "github.com/QuickAmethyst/monosvc/stdlibgo/graphql"
 )
+
+// Group is the resolver for the group field.
+func (r *accountResolver) Group(ctx context.Context, obj *model.Account) (*model.AccountGroup, error) {
+	if obj == nil || obj.GroupID == 0 {
+		return nil, nil
+	}
+
+	accountGroup, err := r.AccountingUsecase.GetAccountGroup(ctx, sql.AccountGroupStatement{ID: obj.GroupID})
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on get account group", libErr.GetCode(err))
+	}
+
+	return &model.AccountGroup{
+		ID:       accountGroup.ID,
+		Name:     accountGroup.Name,
+		ClassID:  accountGroup.ClassID,
+		ParentID: accountGroup.ParentID.Int64,
+		Inactive: accountGroup.Inactive,
+	}, nil
+}
 
 // Type is the resolver for the type field.
 func (r *accountClassResolver) Type(ctx context.Context, obj *model.AccountClass) (*model.AccountClassType, error) {
@@ -165,7 +187,7 @@ func (r *mutationResolver) UpdateAccountGroupByID(ctx context.Context, id int, i
 	}
 
 	return &model.AccountGroup{
-		ID:       accountGroup.ID,
+		ID:       int64(id),
 		Name:     accountGroup.Name,
 		ClassID:  accountGroup.ClassID,
 		ParentID: accountGroup.ParentID.Int64,
@@ -183,9 +205,53 @@ func (r *mutationResolver) DeleteAccountGroupByID(ctx context.Context, id int) (
 	return id, nil
 }
 
+// StoreAccount is the resolver for the storeAccount field.
+func (r *mutationResolver) StoreAccount(ctx context.Context, input model.WriteAccountInput) (*model.Account, error) {
+	account := input.Domain()
+
+	if err := r.AccountingUsecase.StoreAccount(ctx, &account); err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on store account", libErr.GetCode(err))
+	}
+
+	return &model.Account{
+		ID:       account.ID,
+		Name:     account.Name,
+		GroupID:  account.GroupID,
+		Inactive: account.Inactive,
+	}, nil
+}
+
+// UpdateAccountByID is the resolver for the updateAccountByID field.
+func (r *mutationResolver) UpdateAccountByID(ctx context.Context, id int, input model.WriteAccountInput) (*model.Account, error) {
+	account := input.Domain()
+
+	if err := r.AccountingUsecase.UpdateAccountByID(ctx, int64(id), &account); err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on update account by id", libErr.GetCode(err))
+	}
+
+	return &model.Account{
+		ID:       int64(id),
+		Name:     account.Name,
+		GroupID:  account.GroupID,
+		Inactive: account.Inactive,
+	}, nil
+}
+
+// DeleteAccountByID is the resolver for the deleteAccountByID field.
+func (r *mutationResolver) DeleteAccountByID(ctx context.Context, id int) (int, error) {
+	if err := r.AccountingUsecase.DeleteAccountByID(ctx, int64(id)); err != nil {
+		r.Logger.Error(err.Error())
+		return id, sdkGraphql.NewError(err, "Failed on delete account by id", libErr.GetCode(err))
+	}
+
+	return id, nil
+}
+
 // AccountClasses is the resolver for the accountClasses field.
 func (r *queryResolver) AccountClasses(ctx context.Context) ([]*model.AccountClass, error) {
-	accountClasses, err := r.AccountingUsecase.GetAllAccountClass(ctx, sql.AccountClassStatement{})
+	accountClasses, err := r.AccountingUsecase.GetAllAccountClasses(ctx, sql.AccountClassStatement{})
 	if err != nil {
 		r.Logger.Error(err.Error())
 		return nil, sdkGraphql.NewError(err, "Failed on get account classes", libErr.GetCode(err))
@@ -226,7 +292,7 @@ func (r *queryResolver) AccountClass(ctx context.Context, input model.AccountCla
 // AccountClassTypes is the resolver for the accountClassTypes field.
 func (r *queryResolver) AccountClassTypes(ctx context.Context) (*model.AccountClassTypesResult, error) {
 	result := make([]*model.AccountClassType, 0)
-	classTypes := r.AccountingUsecase.GetAccountClassTypeList(ctx)
+	classTypes := r.AccountingUsecase.GetAllAccountTypes(ctx)
 
 	for _, classType := range classTypes {
 		result = append(result, &model.AccountClassType{
@@ -254,7 +320,7 @@ func (r *queryResolver) AccountGroups(ctx context.Context, input *model.AccountG
 		statement = sql.AccountGroupStatement{ParentIDIsNULL: input.ParentIDIsNULL}
 	}
 
-	accountGroups, err := r.AccountingUsecase.GetAllAccountGroup(ctx, statement)
+	accountGroups, err := r.AccountingUsecase.GetAllAccountGroups(ctx, statement)
 
 	if err != nil {
 		r.Logger.Error(err.Error())
@@ -295,11 +361,60 @@ func (r *queryResolver) AccountGroup(ctx context.Context, input model.AccountGro
 	}, nil
 }
 
+// Accounts is the resolver for the accounts field.
+func (r *queryResolver) Accounts(ctx context.Context, input *model.AccountInput) ([]*model.Account, error) {
+	var stmt sql.AccountStatement
+	if input != nil {
+		stmt.ID = input.ID
+	}
+
+	accounts, err := r.AccountingUsecase.GetAllAccounts(ctx, stmt)
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on get accounts", libErr.GetCode(err))
+	}
+
+	var result = make([]*model.Account, len(accounts))
+	for i, account := range accounts {
+		result[i] = &model.Account{
+			ID:       account.ID,
+			Name:     account.Name,
+			GroupID:  account.GroupID,
+			Inactive: account.Inactive,
+		}
+	}
+
+	return result, nil
+}
+
+// Account is the resolver for the account field.
+func (r *queryResolver) Account(ctx context.Context, input model.AccountInput) (*model.Account, error) {
+	account, err := r.AccountingUsecase.GetAccount(ctx, sql.AccountStatement{
+		ID: input.ID,
+	})
+
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on get account group", libErr.GetCode(err))
+	}
+
+	return &model.Account{
+		ID:       account.ID,
+		Name:     account.Name,
+		GroupID:  account.GroupID,
+		Inactive: account.Inactive,
+	}, nil
+}
+
+// Account returns generated.AccountResolver implementation.
+func (r *Resolver) Account() generated.AccountResolver { return &accountResolver{r} }
+
 // AccountClass returns generated.AccountClassResolver implementation.
 func (r *Resolver) AccountClass() generated.AccountClassResolver { return &accountClassResolver{r} }
 
 // AccountGroup returns generated.AccountGroupResolver implementation.
 func (r *Resolver) AccountGroup() generated.AccountGroupResolver { return &accountGroupResolver{r} }
 
+type accountResolver struct{ *Resolver }
 type accountClassResolver struct{ *Resolver }
 type accountGroupResolver struct{ *Resolver }

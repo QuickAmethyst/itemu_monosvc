@@ -81,3 +81,31 @@ type AccountGroupInput struct {
 	ID             int  `json:"id"`
 	ParentIDIsNULL bool `json:"parentIDIsNULL"`
 }
+
+type Account struct {
+	ID       int64 `json:"id"`
+	Name     string `json:"name"`
+	GroupID  int64    `json:"groupID"`
+	Inactive bool  `json:"inactive"`
+}
+
+type WriteAccountInput struct {
+	Name     string `json:"name"`
+	GroupID  int64    `json:"groupID"`
+	Inactive *bool  `json:"inactive"`
+}
+
+func (w *WriteAccountInput) Domain()  (account domain.Account) {
+	account.Name = w.Name
+	account.GroupID = w.GroupID
+
+	if w.Inactive != nil {
+		account.Inactive = *w.Inactive
+	}
+
+	return
+}
+
+type AccountInput struct {
+	ID int64 `json:"id"`
+}

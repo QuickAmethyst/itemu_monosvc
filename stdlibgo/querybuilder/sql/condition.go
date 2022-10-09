@@ -12,19 +12,21 @@ type Condition struct {
 }
 
 func (c *Condition) BuildQuery() (query string, args []interface{}, err error) {
-	var (
-		strct   = reflect.ValueOf(c.stmt)
-		typeOfT = strct.Type()
-	)
+	strct   := reflect.ValueOf(c.stmt)
+	if strct.Kind() == reflect.Pointer && strct.IsNil() {
+		err = ErrStmtNil
+		return
+	}
 
-	for i := 0; i < strct.NumField(); i++ {
+	typeOfT := reflect.Indirect(strct).Type()
+	for i := 0; i < reflect.Indirect(strct).NumField(); i++ {
 		var (
 			scopeQuery string
 			scopeArg   interface{}
 			skipArg    bool
 		)
 
-		fieldValue := strct.Field(i).Interface()
+		fieldValue := reflect.Indirect(strct).Field(i).Interface()
 		isValueEmpty := reflect.ValueOf(fieldValue).IsZero()
 
 		if isValueEmpty {

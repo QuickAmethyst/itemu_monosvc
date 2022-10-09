@@ -14,10 +14,26 @@ type Writer interface {
 	StoreAccountGroup(ctx context.Context, accountGroup *domain.AccountGroup) (err error)
 	UpdateAccountGroupByID(ctx context.Context, id int64, accountGroup *domain.AccountGroup) (err error)
 	DeleteAccountGroupByID(ctx context.Context, id int64) (err error)
+
+	StoreAccount(ctx context.Context, account *domain.Account) (err error)
+	UpdateAccountByID(ctx context.Context, id int64, account *domain.Account) (err error)
+	DeleteAccountByID(ctx context.Context, id int64) (err error)
 }
 
 type writer struct {
 	AccountingSQL sql.SQL
+}
+
+func (w *writer) StoreAccount(ctx context.Context, account *domain.Account) (err error) {
+	return w.AccountingSQL.StoreAccount(ctx, account)
+}
+
+func (w *writer) UpdateAccountByID(ctx context.Context, id int64, account *domain.Account) (err error) {
+	return w.AccountingSQL.UpdateAccountByID(ctx, id, account)
+}
+
+func (w *writer) DeleteAccountByID(ctx context.Context, id int64) (err error) {
+	return w.AccountingSQL.DeleteAccountByID(ctx, id)
 }
 
 func (w *writer) StoreAccountGroup(ctx context.Context, accountClassGroup *domain.AccountGroup) (err error) {

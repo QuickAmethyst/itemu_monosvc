@@ -11,6 +11,12 @@ const (
 	EcodeDeleteAccountGroupFailed
 	EcodeGetAccountGroupFailed
 	EcodeGetAllTopLevelAccountGroupFailed
-	EcodeGetAllAccountGroupFailed
+	EcodeGetAllAccountGroupsFailed
 	EcodeParentIDNotValid
+	EcodeStoreAccountFailed
+	EcodeUpdateAccountFailed
+	EcodeDeleteAccountFailed
+	EcodeGetAllAccountsFailed
+	EcodeGetAccountFailed
+	EcodeGetAccountByIDFailed
 )

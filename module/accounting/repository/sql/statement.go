@@ -9,3 +9,7 @@ type AccountGroupStatement struct {
 	ParentID       int64
 	ParentIDIsNULL bool
 }
+
+type AccountStatement struct {
+	ID int64
+}
