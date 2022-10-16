@@ -19,4 +19,9 @@ const (
 	EcodeGetAllAccountsFailed
 	EcodeGetAccountFailed
 	EcodeStoreJournalFailed
+	EcodeBeginTxFailed
+	EcodeRollbackTxFailed
+	EcodeStoreTransactionAtJournalFailed
+	EcodeStoreTransactionAtGeneralLedgerFailed
+	EcodeStoreTransactionCreatedByRequired
 )

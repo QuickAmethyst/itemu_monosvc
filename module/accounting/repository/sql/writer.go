@@ -5,10 +5,13 @@ import (
 	goErr "errors"
 	"fmt"
 	"github.com/QuickAmethyst/monosvc/module/accounting/domain"
+	"github.com/QuickAmethyst/monosvc/stdlibgo/appcontext"
 	"github.com/QuickAmethyst/monosvc/stdlibgo/errors"
 	"github.com/QuickAmethyst/monosvc/stdlibgo/logger"
 	qb "github.com/QuickAmethyst/monosvc/stdlibgo/querybuilder/sql"
 	"github.com/QuickAmethyst/monosvc/stdlibgo/sql"
+	"github.com/google/uuid"
+	"time"
 )
 
 type Writer interface {
@@ -24,8 +27,7 @@ type Writer interface {
 	UpdateAccountByID(ctx context.Context, id int64, account *domain.Account) (err error)
 	DeleteAccountByID(ctx context.Context, id int64) (err error)
 
-	StoreJournal(ctx context.Context, journal *domain.Journal) (err error)
-	StoreGeneralLedgers(ctx context.Context, gl []domain.GeneralLedger) (err error)
+	StoreTransactions(ctx context.Context, transactions []Transaction) (journal domain.Journal, err error)
 }
 
 type writer struct {
@@ -34,12 +36,69 @@ type writer struct {
 	reader Reader
 }
 
-func (w *writer) StoreJournal(ctx context.Context, journal *domain.Journal) (err error) {
-	err = w.db.QueryRowContext(ctx, `
-		INSERT INTO journals (id, amount, created_at)
-		VALUES ($1, $2, $3)
-		RETURNING id
-	`, journal.ID, journal.Amount, journal.CreatedAt).Scan(&journal.ID)
+func (w *writer) StoreTransactions(ctx context.Context, transactions []Transaction) (result domain.Journal, err error) {
+	var (
+		mapAccountGeneralLedger map[int64]*domain.GeneralLedger
+		amount float64
+	)
+
+	now := time.Now()
+	journalID := uuid.New()
+	userID := appcontext.GetUserID(ctx)
+	if userID == uuid.Nil {
+		err = errors.PropagateWithCode(goErr.New("creator unknown"), EcodeStoreTransactionCreatedByRequired, "creator unknown")
+		return
+	}
+
+	for _, transaction := range transactions {
+		gl := mapAccountGeneralLedger[transaction.AccountID]
+		if gl == nil {
+			mapAccountGeneralLedger[transaction.AccountID] = &domain.GeneralLedger{
+				JournalID: journalID,
+				AccountID: transaction.AccountID,
+				CreatedBy: userID,
+				Amount: 0,
+			}
+		}
+
+		gl.Amount += transaction.Amount
+		amount += transaction.Amount
+	}
+
+	var gls []domain.GeneralLedger
+	for _, gl := range mapAccountGeneralLedger {
+		gls = append(gls, *gl)
+	}
+
+	journal := domain.Journal{
+		ID:        journalID,
+		Amount:    amount,
+		CreatedAt: now,
+	}
+
+	err = w.db.Transaction(ctx, nil, func(tx *sql.Tx) error {
+		err = w.StoreJournalTx(tx, ctx, &journal)
+
+		if err != nil {
+			err = errors.PropagateWithCode(err, EcodeStoreTransactionAtJournalFailed, "Store transaction failed")
+			return err
+		}
+
+		err = w.StoreGeneralLedgersTx(tx, ctx, gls)
+		if err != nil {
+			err = errors.PropagateWithCode(err, EcodeStoreTransactionAtGeneralLedgerFailed, "Store transaction failed")
+			return err
+		}
+
+		return nil
+	})
+
+	return
+}
+
+func (w *writer) StoreJournalTx(tx *sql.Tx, ctx context.Context, journal *domain.Journal) (err error) {
+	query := "INSERT INTO journals (id, amount, created_at) VALUES ($1, $2, $3) RETURNING id"
+	err = tx.QueryRowContext(ctx, query, journal.ID, journal.Amount, journal.CreatedAt).Scan(&journal.ID)
 
 	if err != nil {
 		err = errors.PropagateWithCode(err, EcodeStoreJournalFailed, "Store journal failed")
@@ -49,7 +108,7 @@ func (w *writer) StoreJournal(ctx context.Context, journal *domain.Journal) (err
 	return
 }
 
-func (w *writer) StoreGeneralLedgers(ctx context.Context, gls []domain.GeneralLedger) (err error) {
+func (w *writer) StoreGeneralLedgersTx(tx *sql.Tx, ctx context.Context, gls []domain.GeneralLedger) (err error) {
 	var params []interface{}
 
 	query := `Insert INTO general_ledgers (id, journal_id, account_id, amount, created_by) VALUES `
@@ -60,7 +119,7 @@ func (w *writer) StoreGeneralLedgers(ctx context.Context, gls []domain.GeneralLe
 	}
 
 	query = query[:len(query)-1] // remove trailing ","
-	_, err = w.db.ExecContext(ctx, w.db.Rebind(query), params...)
+	_, err = tx.ExecContext(ctx, w.db.Rebind(query), params...)
 	return
 }
 
@@ -80,8 +139,8 @@ func (w *writer) StoreAccount(ctx context.Context, account *domain.Account) (err
 }
 
 func (w *writer) UpdateAccountByID(ctx context.Context, id int64, account *domain.Account) (err error) {
-	dest := map[string]interface{} {
-		"name": account.Name,
+	dest := map[string]interface{}{
+		"name":     account.Name,
 		"group_id": account.GroupID,
 		"inactive": account.Inactive,
 	}

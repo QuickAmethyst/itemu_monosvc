@@ -18,10 +18,16 @@ type Writer interface {
 	StoreAccount(ctx context.Context, account *domain.Account) (err error)
 	UpdateAccountByID(ctx context.Context, id int64, account *domain.Account) (err error)
 	DeleteAccountByID(ctx context.Context, id int64) (err error)
+
+	StoreTransactions(ctx context.Context, transactions []sql.Transaction) (journal domain.Journal, err error)
 }
 
 type writer struct {
 	AccountingSQL sql.SQL
+}
+
+func (w *writer) StoreTransactions(ctx context.Context, transactions []sql.Transaction) (journal domain.Journal, err error) {
+	return w.AccountingSQL.StoreTransactions(ctx, transactions)
 }
 
 func (w *writer) StoreAccount(ctx context.Context, account *domain.Account) (err error) {

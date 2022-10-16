@@ -10,6 +10,19 @@ import (
 )
 
 type Result = sql.Result
+type Tx = sqlx.Tx
+type TxOptions = sql.TxOptions
+
+const (
+	LevelDefault         = sql.LevelDefault
+	LevelReadUncommitted = sql.LevelReadUncommitted
+	LevelReadCommitted   = sql.LevelReadCommitted
+	LevelWriteCommitted  = sql.LevelWriteCommitted
+	LevelRepeatableRead  = sql.LevelRepeatableRead
+	LevelSnapshot        = sql.LevelSnapshot
+	LevelSerializable    = sql.LevelSerializable
+	LevelLinearizable    = sql.LevelLinearizable
+)
 
 type DB interface {
 	Stats() sql.DBStats
@@ -21,19 +34,38 @@ type DB interface {
 	Rebind(query string) string
 	GetContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 	PingContext(ctx context.Context) error
-	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
+	BeginTx(ctx context.Context, opts *TxOptions) (*Tx, error)
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	Updates(ctx context.Context, tableName string, dest interface{}, where interface{}) (sql.Result, error)
 	Delete(ctx context.Context, tableName string, whereStruct interface{}) (sql.Result, error)
+	Transaction(ctx context.Context, opts *TxOptions, txFn func(*Tx) error) (err error)
 }
 
 type db struct {
 	db *sqlx.DB
 }
 
+func (d *db) Transaction(ctx context.Context, opts *TxOptions, txFn func(*Tx) error) (err error) {
+	tx, err := d.BeginTx(ctx, opts)
+	if err != nil {
+		return
+	}
+
+	err = txFn(tx)
+	if err != nil {
+		if rbErr := tx.Rollback(); rbErr != nil {
+			return fmt.Errorf("tx err: %v, rb err: %v", err, rbErr)
+		}
+
+		return
+	}
+
+	return tx.Commit()
+}
+
 func (d *db) Delete(ctx context.Context, tableName string, whereStruct interface{}) (result sql.Result, err error) {
 	var (
-		whereClause string
+		whereClause     string
 		whereClauseArgs []interface{}
 	)
 
@@ -53,8 +85,8 @@ func (d *db) Delete(ctx context.Context, tableName string, whereStruct interface
 
 func (d *db) Updates(ctx context.Context, tableName string, dest interface{}, whereStruct interface{}) (result sql.Result, err error) {
 	var (
-		whereClause, setClause string
-		whereClauseArgs, setClauseArgs   []interface{}
+		whereClause, setClause         string
+		whereClauseArgs, setClauseArgs []interface{}
 	)
 
 	err = utils.ForIn(dest, func(key interface{}, value interface{}) error {
@@ -91,8 +123,8 @@ func (d *db) ExecContext(ctx context.Context, query string, args ...any) (sql.Re
 	return d.db.ExecContext(ctx, query, args...)
 }
 
-func (d *db) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
-	return d.db.BeginTx(ctx, opts)
+func (d *db) BeginTx(ctx context.Context, opts *TxOptions) (*Tx, error) {
+	return d.db.BeginTxx(ctx, opts)
 }
 
 func (d *db) GetContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error {

@@ -6,6 +6,7 @@ import (
 	"github.com/QuickAmethyst/monosvc/stdlibgo/appcontext"
 	"github.com/QuickAmethyst/monosvc/stdlibgo/auth"
 	"github.com/QuickAmethyst/monosvc/stdlibgo/errors"
+	"github.com/google/uuid"
 )
 
 type Directive func (ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
@@ -19,7 +20,12 @@ func AuthenticatedDirective(auth auth.Auth) Directive {
 			return nil, NewError(err, "authenticate failed", errors.GetCode(err))
 		}
 
-		ctx = appcontext.SetUserID(ctx, claim.Subject)
+		userID, err := uuid.FromBytes([]byte(claim.Subject))
+		if err != nil {
+			return nil, NewError(err, "authenticate failed", errors.GetCode(err))
+		}
+
+		ctx = appcontext.SetUserID(ctx, userID)
 
 		return next(ctx)
 	}
