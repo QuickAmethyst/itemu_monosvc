@@ -4,7 +4,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type GeneralLedgers struct {
+type GeneralLedger struct {
 	ID        uuid.UUID
 	JournalID uuid.UUID
 	AccountID int64

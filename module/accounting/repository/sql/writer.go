@@ -23,12 +23,45 @@ type Writer interface {
 	StoreAccount(ctx context.Context, account *domain.Account) (err error)
 	UpdateAccountByID(ctx context.Context, id int64, account *domain.Account) (err error)
 	DeleteAccountByID(ctx context.Context, id int64) (err error)
+
+	StoreJournal(ctx context.Context, journal *domain.Journal) (err error)
+	StoreGeneralLedgers(ctx context.Context, gl []domain.GeneralLedger) (err error)
 }
 
 type writer struct {
 	logger logger.Logger
 	db     sql.DB
 	reader Reader
+}
+
+func (w *writer) StoreJournal(ctx context.Context, journal *domain.Journal) (err error) {
+	err = w.db.QueryRowContext(ctx, `
+		INSERT INTO journals (id, amount, created_at)
+		VALUES ($1, $2, $3)
+		RETURNING id
+	`, journal.ID, journal.Amount, journal.CreatedAt).Scan(&journal.ID)
+
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeStoreJournalFailed, "Store journal failed")
+		return
+	}
+
+	return
+}
+
+func (w *writer) StoreGeneralLedgers(ctx context.Context, gls []domain.GeneralLedger) (err error) {
+	var params []interface{}
+
+	query := `Insert INTO general_ledgers (id, journal_id, account_id, amount, created_by) VALUES `
+
+	for _, gl := range gls {
+		query += "(?,?,?,?,?),"
+		params = append(params, gl.ID, gl.JournalID, gl.AccountID, gl.Amount, gl.CreatedBy)
+	}
+
+	query = query[:len(query)-1] // remove trailing ","
+	_, err = w.db.ExecContext(ctx, w.db.Rebind(query), params...)
+	return
 }
 
 func (w *writer) StoreAccount(ctx context.Context, account *domain.Account) (err error) {

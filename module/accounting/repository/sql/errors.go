@@ -18,5 +18,5 @@ const (
 	EcodeDeleteAccountFailed
 	EcodeGetAllAccountsFailed
 	EcodeGetAccountFailed
-	EcodeGetAccountByIDFailed
+	EcodeStoreJournalFailed
 )
