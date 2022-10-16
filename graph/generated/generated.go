@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
@@ -91,6 +92,12 @@ type ComplexityRoot struct {
 		RefreshToken  func(childComplexity int) int
 	}
 
+	Journal struct {
+		Amount    func(childComplexity int) int
+		CreatedAt func(childComplexity int) int
+		ID        func(childComplexity int) int
+	}
+
 	Mutation struct {
 		DeleteAccountByID      func(childComplexity int, id int) int
 		DeleteAccountClassByID func(childComplexity int, id int) int
@@ -100,6 +107,7 @@ type ComplexityRoot struct {
 		StoreAccount           func(childComplexity int, input model.WriteAccountInput) int
 		StoreAccountClass      func(childComplexity int, input model.WriteAccountClassInput) int
 		StoreAccountGroup      func(childComplexity int, input model.WriteAccountGroupInput) int
+		StoreTransactions      func(childComplexity int, input []*model.WriteTransactionsInput) int
 		StoreUom               func(childComplexity int, input model.WriteUomInput) int
 		UpdateAccountByID      func(childComplexity int, id int, input model.WriteAccountInput) int
 		UpdateAccountClassByID func(childComplexity int, id int, input model.WriteAccountClassInput) int
@@ -160,6 +168,7 @@ type MutationResolver interface {
 	StoreAccount(ctx context.Context, input model.WriteAccountInput) (*model.Account, error)
 	UpdateAccountByID(ctx context.Context, id int, input model.WriteAccountInput) (*model.Account, error)
 	DeleteAccountByID(ctx context.Context, id int) (int, error)
+	StoreTransactions(ctx context.Context, input []*model.WriteTransactionsInput) (*model.Journal, error)
 	SignIn(ctx context.Context, input model.SignInInput) (*model.Credential, error)
 	RefreshCredential(ctx context.Context, input string) (*model.Credential, error)
 	StoreUom(ctx context.Context, input model.WriteUomInput) (*model.Uom, error)
@@ -367,6 +376,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Credential.RefreshToken(childComplexity), true
 
+	case "Journal.amount":
+		if e.complexity.Journal.Amount == nil {
+			break
+		}
+
+		return e.complexity.Journal.Amount(childComplexity), true
+
+	case "Journal.createdAt":
+		if e.complexity.Journal.CreatedAt == nil {
+			break
+		}
+
+		return e.complexity.Journal.CreatedAt(childComplexity), true
+
+	case "Journal.id":
+		if e.complexity.Journal.ID == nil {
+			break
+		}
+
+		return e.complexity.Journal.ID(childComplexity), true
+
 	case "Mutation.deleteAccountByID":
 		if e.complexity.Mutation.DeleteAccountByID == nil {
 			break
@@ -462,6 +492,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.StoreAccountGroup(childComplexity, args["input"].(model.WriteAccountGroupInput)), true
+
+	case "Mutation.storeTransactions":
+		if e.complexity.Mutation.StoreTransactions == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_storeTransactions_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.StoreTransactions(childComplexity, args["input"].([]*model.WriteTransactionsInput)), true
 
 	case "Mutation.storeUom":
 		if e.complexity.Mutation.StoreUom == nil {
@@ -702,6 +744,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputWriteAccountClassInput,
 		ec.unmarshalInputWriteAccountGroupInput,
 		ec.unmarshalInputWriteAccountInput,
+		ec.unmarshalInputWriteTransactionsInput,
 		ec.unmarshalInputWriteUomInput,
 	)
 	first := true
@@ -789,6 +832,13 @@ extend type Mutation {
     storeAccount(input: WriteAccountInput!): Account! @authenticated
     updateAccountByID(id: Int!, input: WriteAccountInput!): Account! @authenticated
     deleteAccountByID(id: Int!): Int! @authenticated
+
+    storeTransactions(input: [WriteTransactionsInput!]!): Journal! @authenticated
+}
+
+input WriteTransactionsInput {
+    accountID: Int!
+    amount: Float!
 }
 
 input AccountInput {
@@ -862,7 +912,12 @@ type Account {
     inactive: Boolean!
     group: AccountGroup!
 }
-`, BuiltIn: false},
+
+type Journal {
+    id: ID!
+    amount: Float!
+    createdAt: Time!
+}`, BuiltIn: false},
 	{Name: "../auth.graphqls", Input: `extend type Mutation {
     signIn(input: SignInInput!): Credential!
     refreshCredential(input: String!): Credential!
@@ -883,7 +938,8 @@ type Credential {
 	{Name: "../directive.graphqls", Input: `"Prevents access to a field if not authenticated"
 directive @authenticated on FIELD_DEFINITION`, BuiltIn: false},
 	{Name: "../scalar.graphqls", Input: `scalar Uint
-scalar Upload`, BuiltIn: false},
+scalar Upload
+scalar Time`, BuiltIn: false},
 	{Name: "../schema.graphqls", Input: `type Query
 type Mutation
 
@@ -1048,6 +1104,21 @@ func (ec *executionContext) field_Mutation_storeAccount_args(ctx context.Context
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 		arg0, err = ec.unmarshalNWriteAccountInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐWriteAccountInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_storeTransactions_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 []*model.WriteTransactionsInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNWriteTransactionsInput2ᚕᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐWriteTransactionsInputᚄ(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -2491,6 +2562,138 @@ func (ec *executionContext) fieldContext_Credential_refreshExpire(ctx context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _Journal_id(ctx context.Context, field graphql.CollectedField, obj *model.Journal) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Journal_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Journal_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Journal",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Journal_amount(ctx context.Context, field graphql.CollectedField, obj *model.Journal) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Journal_amount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Amount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Journal_amount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Journal",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Journal_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.Journal) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Journal_createdAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CreatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Journal_createdAt(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Journal",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_storeAccountClass(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_storeAccountClass(ctx, field)
 	if err != nil {
@@ -3244,6 +3447,89 @@ func (ec *executionContext) fieldContext_Mutation_deleteAccountByID(ctx context.
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_deleteAccountByID_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_storeTransactions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_storeTransactions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutation().StoreTransactions(rctx, fc.Args["input"].([]*model.WriteTransactionsInput))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.Authenticated == nil {
+				return nil, errors.New("directive authenticated is not implemented")
+			}
+			return ec.directives.Authenticated(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.Journal); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/QuickAmethyst/monosvc/graph/model.Journal`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Journal)
+	fc.Result = res
+	return ec.marshalNJournal2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐJournal(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_storeTransactions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Journal_id(ctx, field)
+			case "amount":
+				return ec.fieldContext_Journal_amount(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Journal_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Journal", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_storeTransactions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -6973,6 +7259,42 @@ func (ec *executionContext) unmarshalInputWriteAccountInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputWriteTransactionsInput(ctx context.Context, obj interface{}) (model.WriteTransactionsInput, error) {
+	var it model.WriteTransactionsInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"accountID", "amount"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "accountID":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountID"))
+			it.AccountID, err = ec.unmarshalNInt2int64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "amount":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("amount"))
+			it.Amount, err = ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputWriteUomInput(ctx context.Context, obj interface{}) (model.WriteUomInput, error) {
 	var it model.WriteUomInput
 	asMap := map[string]interface{}{}
@@ -7379,6 +7701,48 @@ func (ec *executionContext) _Credential(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var journalImplementors = []string{"Journal"}
+
+func (ec *executionContext) _Journal(ctx context.Context, sel ast.SelectionSet, obj *model.Journal) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, journalImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Journal")
+		case "id":
+
+			out.Values[i] = ec._Journal_id(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "amount":
+
+			out.Values[i] = ec._Journal_amount(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "createdAt":
+
+			out.Values[i] = ec._Journal_createdAt(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var mutationImplementors = []string{"Mutation"}
 
 func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -7474,6 +7838,15 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deleteAccountByID(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "storeTransactions":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_storeTransactions(ctx, field)
 			})
 
 			if out.Values[i] == graphql.Null {
@@ -8508,6 +8881,21 @@ func (ec *executionContext) marshalNCredential2ᚖgithubᚗcomᚋQuickAmethyst�
 	return ec._Credential(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v interface{}) (float64, error) {
+	res, err := graphql.UnmarshalFloatContext(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.SelectionSet, v float64) graphql.Marshaler {
+	res := graphql.MarshalFloatContext(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return graphql.WrapContextMarshaler(ctx, res)
+}
+
 func (ec *executionContext) unmarshalNID2int64(ctx context.Context, v interface{}) (int64, error) {
 	res, err := graphql.UnmarshalInt64(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -8515,6 +8903,21 @@ func (ec *executionContext) unmarshalNID2int64(ctx context.Context, v interface{
 
 func (ec *executionContext) marshalNID2int64(ctx context.Context, sel ast.SelectionSet, v int64) graphql.Marshaler {
 	res := graphql.MarshalInt64(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) unmarshalNID2string(ctx context.Context, v interface{}) (string, error) {
+	res, err := graphql.UnmarshalID(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	res := graphql.MarshalID(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -8553,6 +8956,20 @@ func (ec *executionContext) marshalNInt2int64(ctx context.Context, sel ast.Selec
 	return res
 }
 
+func (ec *executionContext) marshalNJournal2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐJournal(ctx context.Context, sel ast.SelectionSet, v model.Journal) graphql.Marshaler {
+	return ec._Journal(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNJournal2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐJournal(ctx context.Context, sel ast.SelectionSet, v *model.Journal) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Journal(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNPaging2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐPaging(ctx context.Context, sel ast.SelectionSet, v *model.Paging) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -8575,6 +8992,21 @@ func (ec *executionContext) unmarshalNString2string(ctx context.Context, v inter
 
 func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
 	res := graphql.MarshalString(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) unmarshalNTime2timeᚐTime(ctx context.Context, v interface{}) (time.Time, error) {
+	res, err := graphql.UnmarshalTime(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel ast.SelectionSet, v time.Time) graphql.Marshaler {
+	res := graphql.MarshalTime(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -8683,6 +9115,28 @@ func (ec *executionContext) unmarshalNWriteAccountGroupInput2githubᚗcomᚋQuic
 func (ec *executionContext) unmarshalNWriteAccountInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐWriteAccountInput(ctx context.Context, v interface{}) (model.WriteAccountInput, error) {
 	res, err := ec.unmarshalInputWriteAccountInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNWriteTransactionsInput2ᚕᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐWriteTransactionsInputᚄ(ctx context.Context, v interface{}) ([]*model.WriteTransactionsInput, error) {
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]*model.WriteTransactionsInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNWriteTransactionsInput2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐWriteTransactionsInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNWriteTransactionsInput2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐWriteTransactionsInput(ctx context.Context, v interface{}) (*model.WriteTransactionsInput, error) {
+	res, err := ec.unmarshalInputWriteTransactionsInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNWriteUomInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐWriteUomInput(ctx context.Context, v interface{}) (model.WriteUomInput, error) {

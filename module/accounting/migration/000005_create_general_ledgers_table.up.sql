@@ -7,6 +7,9 @@ CREATE TABLE IF NOT EXISTS general_ledgers
     amount     numeric(18, 8) NOT NULL,
     created_by uuid           NOT NULL,
 
-    UNIQUE (journal_id, account_id),
-    CONSTRAINT fk_account_id FOREIGN KEY (account_id) REFERENCES accounts (id)
+    CONSTRAINT fk_journal_id FOREIGN KEY (journal_id) REFERENCES journals (id),
+    CONSTRAINT fk_account_id FOREIGN KEY (account_id) REFERENCES accounts (id),
 )
+
+CREATE INDEX idx_journal_id ON general_ledgers (journal_id);
+CREATE INDEX idx_account_id ON general_ledgers (account_id);

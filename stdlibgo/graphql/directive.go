@@ -20,7 +20,7 @@ func AuthenticatedDirective(auth auth.Auth) Directive {
 			return nil, NewError(err, "authenticate failed", errors.GetCode(err))
 		}
 
-		userID, err := uuid.FromBytes([]byte(claim.Subject))
+		userID, err := uuid.Parse(claim.Subject)
 		if err != nil {
 			return nil, NewError(err, "authenticate failed", errors.GetCode(err))
 		}

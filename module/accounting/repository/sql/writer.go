@@ -5,7 +5,6 @@ import (
 	goErr "errors"
 	"fmt"
 	"github.com/QuickAmethyst/monosvc/module/accounting/domain"
-	"github.com/QuickAmethyst/monosvc/stdlibgo/appcontext"
 	"github.com/QuickAmethyst/monosvc/stdlibgo/errors"
 	"github.com/QuickAmethyst/monosvc/stdlibgo/logger"
 	qb "github.com/QuickAmethyst/monosvc/stdlibgo/querybuilder/sql"
@@ -27,7 +26,7 @@ type Writer interface {
 	UpdateAccountByID(ctx context.Context, id int64, account *domain.Account) (err error)
 	DeleteAccountByID(ctx context.Context, id int64) (err error)
 
-	StoreTransactions(ctx context.Context, transactions []Transaction) (journal domain.Journal, err error)
+	StoreTransactions(ctx context.Context, userID uuid.UUID, transactions []Transaction) (journal *domain.Journal, err error)
 }
 
 type writer struct {
@@ -36,48 +35,59 @@ type writer struct {
 	reader Reader
 }
 
-func (w *writer) StoreTransactions(ctx context.Context, transactions []Transaction) (result domain.Journal, err error) {
+func (w *writer) StoreTransactions(ctx context.Context, userID uuid.UUID, transactions []Transaction) (journal *domain.Journal, err error) {
 	var (
-		mapAccountGeneralLedger map[int64]*domain.GeneralLedger
-		amount float64
+		gls           []domain.GeneralLedger
+		journalAmount float64
+		balanceAmount float64
 	)
 
-	now := time.Now()
-	journalID := uuid.New()
-	userID := appcontext.GetUserID(ctx)
 	if userID == uuid.Nil {
 		err = errors.PropagateWithCode(goErr.New("creator unknown"), EcodeStoreTransactionCreatedByRequired, "creator unknown")
 		return
 	}
 
+	now := time.Now()
+	journalID := uuid.New()
+
 	for _, transaction := range transactions {
-		gl := mapAccountGeneralLedger[transaction.AccountID]
-		if gl == nil {
-			mapAccountGeneralLedger[transaction.AccountID] = &domain.GeneralLedger{
-				JournalID: journalID,
-				AccountID: transaction.AccountID,
-				CreatedBy: userID,
-				Amount: 0,
-			}
+		if transaction.Amount == 0 {
+			continue
 		}
 
-		gl.Amount += transaction.Amount
-		amount += transaction.Amount
+		gls = append(gls, domain.GeneralLedger{
+			ID:        uuid.New(),
+			JournalID: journalID,
+			AccountID: transaction.AccountID,
+			CreatedBy: userID,
+			Amount:    transaction.Amount,
+		})
+
+		balanceAmount += transaction.Amount
+		if transaction.Amount > 0 {
+			journalAmount += transaction.Amount
+		}
 	}
 
-	var gls []domain.GeneralLedger
-	for _, gl := range mapAccountGeneralLedger {
-		gls = append(gls, *gl)
+	// check mapAccountGeneralLedger is empty.
+	// empty is occur when all the transaction amount is zero
+	if len(gls) == 0 {
+		return nil, nil
 	}
 
-	journal := domain.Journal{
+	if balanceAmount != 0 {
+		err = errors.PropagateWithCode(fmt.Errorf("transaction not balance"), EcodeTransactionNotBalance, "Transaction not balance")
+		return
+	}
+
+	journal = &domain.Journal{
 		ID:        journalID,
-		Amount:    amount,
+		Amount:    journalAmount,
 		CreatedAt: now,
 	}
 
 	err = w.db.Transaction(ctx, nil, func(tx *sql.Tx) error {
-		err = w.StoreJournalTx(tx, ctx, &journal)
+		err = w.StoreJournalTx(tx, ctx, journal)
 
 		if err != nil {
 			err = errors.PropagateWithCode(err, EcodeStoreTransactionAtJournalFailed, "Store transaction failed")

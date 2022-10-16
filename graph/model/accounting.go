@@ -2,6 +2,7 @@ package model
 
 import (
 	"github.com/QuickAmethyst/monosvc/module/accounting/domain"
+	"time"
 )
 
 type AccountClass struct {
@@ -108,4 +109,15 @@ func (w *WriteAccountInput) Domain()  (account domain.Account) {
 
 type AccountInput struct {
 	ID int64 `json:"id"`
+}
+
+type Journal struct {
+	ID        string    `json:"id"`
+	Amount    float64   `json:"amount"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+type WriteTransactionsInput struct {
+	AccountID int64     `json:"accountID"`
+	Amount    float64 `json:"amount"`
 }

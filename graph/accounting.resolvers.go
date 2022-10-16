@@ -9,6 +9,7 @@ import (
 	"github.com/QuickAmethyst/monosvc/graph/generated"
 	"github.com/QuickAmethyst/monosvc/graph/model"
 	"github.com/QuickAmethyst/monosvc/module/accounting/repository/sql"
+	"github.com/QuickAmethyst/monosvc/stdlibgo/appcontext"
 	libErr "github.com/QuickAmethyst/monosvc/stdlibgo/errors"
 	sdkGraphql "github.com/QuickAmethyst/monosvc/stdlibgo/graphql"
 )
@@ -247,6 +248,35 @@ func (r *mutationResolver) DeleteAccountByID(ctx context.Context, id int) (int, 
 	}
 
 	return id, nil
+}
+
+// StoreTransactions is the resolver for the storeTransactions field.
+func (r *mutationResolver) StoreTransactions(ctx context.Context, input []*model.WriteTransactionsInput) (*model.Journal, error) {
+	userID := appcontext.GetUserID(ctx)
+
+	transactions := make([]sql.Transaction, len(input))
+	for _, item := range input {
+		transactions = append(transactions, sql.Transaction{
+			AccountID: item.AccountID,
+			Amount:    item.Amount,
+		})
+	}
+
+	journal, err := r.AccountingUsecase.StoreTransactions(ctx, userID, transactions)
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on create transactions", libErr.GetCode(err))
+	}
+
+	if journal == nil {
+		return nil, nil
+	}
+
+	return &model.Journal{
+		ID:        journal.ID.String(),
+		Amount:    journal.Amount,
+		CreatedAt: journal.CreatedAt,
+	}, nil
 }
 
 // AccountClasses is the resolver for the accountClasses field.

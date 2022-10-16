@@ -24,4 +24,5 @@ const (
 	EcodeStoreTransactionAtJournalFailed
 	EcodeStoreTransactionAtGeneralLedgerFailed
 	EcodeStoreTransactionCreatedByRequired
+	EcodeTransactionNotBalance
 )

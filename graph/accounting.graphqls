@@ -24,6 +24,13 @@ extend type Mutation {
     storeAccount(input: WriteAccountInput!): Account! @authenticated
     updateAccountByID(id: Int!, input: WriteAccountInput!): Account! @authenticated
     deleteAccountByID(id: Int!): Int! @authenticated
+
+    storeTransactions(input: [WriteTransactionsInput!]!): Journal! @authenticated
+}
+
+input WriteTransactionsInput {
+    accountID: Int!
+    amount: Float!
 }
 
 input AccountInput {
@@ -96,4 +103,10 @@ type Account {
     groupID: Int!
     inactive: Boolean!
     group: AccountGroup!
+}
+
+type Journal {
+    id: ID!
+    amount: Float!
+    createdAt: Time!
 }
