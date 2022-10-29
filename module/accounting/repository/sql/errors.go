@@ -25,4 +25,5 @@ const (
 	EcodeStoreTransactionAtGeneralLedgerFailed
 	EcodeStoreTransactionCreatedByRequired
 	EcodeTransactionNotBalance
+	UpdateGeneralLedgerPreferenceFailed
 )

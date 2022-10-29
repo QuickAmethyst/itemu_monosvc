@@ -92,6 +92,11 @@ type ComplexityRoot struct {
 		RefreshToken  func(childComplexity int) int
 	}
 
+	GeneralLedgerPreference struct {
+		AccountID func(childComplexity int) int
+		ID        func(childComplexity int) int
+	}
+
 	Journal struct {
 		Amount    func(childComplexity int) int
 		CreatedAt func(childComplexity int) int
@@ -99,20 +104,21 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		DeleteAccountByID      func(childComplexity int, id int) int
-		DeleteAccountClassByID func(childComplexity int, id int) int
-		DeleteAccountGroupByID func(childComplexity int, id int) int
-		RefreshCredential      func(childComplexity int, input string) int
-		SignIn                 func(childComplexity int, input model.SignInInput) int
-		StoreAccount           func(childComplexity int, input model.WriteAccountInput) int
-		StoreAccountClass      func(childComplexity int, input model.WriteAccountClassInput) int
-		StoreAccountGroup      func(childComplexity int, input model.WriteAccountGroupInput) int
-		StoreTransactions      func(childComplexity int, input []*model.WriteTransactionsInput) int
-		StoreUom               func(childComplexity int, input model.WriteUomInput) int
-		UpdateAccountByID      func(childComplexity int, id int, input model.WriteAccountInput) int
-		UpdateAccountClassByID func(childComplexity int, id int, input model.WriteAccountClassInput) int
-		UpdateAccountGroupByID func(childComplexity int, id int, input model.WriteAccountGroupInput) int
-		UpdateUom              func(childComplexity int, id int, input model.WriteUomInput) int
+		DeleteAccountByID              func(childComplexity int, id int) int
+		DeleteAccountClassByID         func(childComplexity int, id int) int
+		DeleteAccountGroupByID         func(childComplexity int, id int) int
+		RefreshCredential              func(childComplexity int, input string) int
+		SignIn                         func(childComplexity int, input model.SignInInput) int
+		StoreAccount                   func(childComplexity int, input model.WriteAccountInput) int
+		StoreAccountClass              func(childComplexity int, input model.WriteAccountClassInput) int
+		StoreAccountGroup              func(childComplexity int, input model.WriteAccountGroupInput) int
+		StoreTransactions              func(childComplexity int, input []*model.WriteTransactionsInput) int
+		StoreUom                       func(childComplexity int, input model.WriteUomInput) int
+		UpdateAccountByID              func(childComplexity int, id int, input model.WriteAccountInput) int
+		UpdateAccountClassByID         func(childComplexity int, id int, input model.WriteAccountClassInput) int
+		UpdateAccountGroupByID         func(childComplexity int, id int, input model.WriteAccountGroupInput) int
+		UpdateGeneralLedgerPreferences func(childComplexity int, input []*model.WriteGeneralLedgerPreferenceInput) int
+		UpdateUom                      func(childComplexity int, id int, input model.WriteUomInput) int
 	}
 
 	Paging struct {
@@ -169,6 +175,7 @@ type MutationResolver interface {
 	UpdateAccountByID(ctx context.Context, id int, input model.WriteAccountInput) (*model.Account, error)
 	DeleteAccountByID(ctx context.Context, id int) (int, error)
 	StoreTransactions(ctx context.Context, input []*model.WriteTransactionsInput) (*model.Journal, error)
+	UpdateGeneralLedgerPreferences(ctx context.Context, input []*model.WriteGeneralLedgerPreferenceInput) ([]*model.GeneralLedgerPreference, error)
 	SignIn(ctx context.Context, input model.SignInInput) (*model.Credential, error)
 	RefreshCredential(ctx context.Context, input string) (*model.Credential, error)
 	StoreUom(ctx context.Context, input model.WriteUomInput) (*model.Uom, error)
@@ -376,6 +383,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Credential.RefreshToken(childComplexity), true
 
+	case "GeneralLedgerPreference.accountID":
+		if e.complexity.GeneralLedgerPreference.AccountID == nil {
+			break
+		}
+
+		return e.complexity.GeneralLedgerPreference.AccountID(childComplexity), true
+
+	case "GeneralLedgerPreference.id":
+		if e.complexity.GeneralLedgerPreference.ID == nil {
+			break
+		}
+
+		return e.complexity.GeneralLedgerPreference.ID(childComplexity), true
+
 	case "Journal.amount":
 		if e.complexity.Journal.Amount == nil {
 			break
@@ -552,6 +573,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.UpdateAccountGroupByID(childComplexity, args["id"].(int), args["input"].(model.WriteAccountGroupInput)), true
+
+	case "Mutation.updateGeneralLedgerPreferences":
+		if e.complexity.Mutation.UpdateGeneralLedgerPreferences == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateGeneralLedgerPreferences_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateGeneralLedgerPreferences(childComplexity, args["input"].([]*model.WriteGeneralLedgerPreferenceInput)), true
 
 	case "Mutation.updateUom":
 		if e.complexity.Mutation.UpdateUom == nil {
@@ -744,6 +777,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputWriteAccountClassInput,
 		ec.unmarshalInputWriteAccountGroupInput,
 		ec.unmarshalInputWriteAccountInput,
+		ec.unmarshalInputWriteGeneralLedgerPreferenceInput,
 		ec.unmarshalInputWriteTransactionsInput,
 		ec.unmarshalInputWriteUomInput,
 	)
@@ -834,6 +868,12 @@ extend type Mutation {
     deleteAccountByID(id: Int!): Int! @authenticated
 
     storeTransactions(input: [WriteTransactionsInput!]!): Journal! @authenticated
+
+    updateGeneralLedgerPreferences(input: [WriteGeneralLedgerPreferenceInput!]!): [GeneralLedgerPreference!]! @authenticated
+}
+
+input WriteGeneralLedgerPreferenceInput {
+    accountID: ID!
 }
 
 input WriteTransactionsInput {
@@ -917,7 +957,13 @@ type Journal {
     id: ID!
     amount: Float!
     createdAt: Time!
-}`, BuiltIn: false},
+}
+
+type GeneralLedgerPreference {
+    id: ID!
+    accountID: ID!
+}
+`, BuiltIn: false},
 	{Name: "../auth.graphqls", Input: `extend type Mutation {
     signIn(input: SignInInput!): Credential!
     refreshCredential(input: String!): Credential!
@@ -1211,6 +1257,21 @@ func (ec *executionContext) field_Mutation_updateAccountGroupByID_args(ctx conte
 		}
 	}
 	args["input"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateGeneralLedgerPreferences_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 []*model.WriteGeneralLedgerPreferenceInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNWriteGeneralLedgerPreferenceInput2ᚕᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐWriteGeneralLedgerPreferenceInputᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -2562,6 +2623,94 @@ func (ec *executionContext) fieldContext_Credential_refreshExpire(ctx context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _GeneralLedgerPreference_id(ctx context.Context, field graphql.CollectedField, obj *model.GeneralLedgerPreference) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneralLedgerPreference_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalNID2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GeneralLedgerPreference_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GeneralLedgerPreference",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GeneralLedgerPreference_accountID(ctx context.Context, field graphql.CollectedField, obj *model.GeneralLedgerPreference) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneralLedgerPreference_accountID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AccountID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*int64)
+	fc.Result = res
+	return ec.marshalNID2ᚖint64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GeneralLedgerPreference_accountID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GeneralLedgerPreference",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Journal_id(ctx context.Context, field graphql.CollectedField, obj *model.Journal) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Journal_id(ctx, field)
 	if err != nil {
@@ -3530,6 +3679,87 @@ func (ec *executionContext) fieldContext_Mutation_storeTransactions(ctx context.
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_storeTransactions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateGeneralLedgerPreferences(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateGeneralLedgerPreferences(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutation().UpdateGeneralLedgerPreferences(rctx, fc.Args["input"].([]*model.WriteGeneralLedgerPreferenceInput))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.Authenticated == nil {
+				return nil, errors.New("directive authenticated is not implemented")
+			}
+			return ec.directives.Authenticated(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.([]*model.GeneralLedgerPreference); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be []*github.com/QuickAmethyst/monosvc/graph/model.GeneralLedgerPreference`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.GeneralLedgerPreference)
+	fc.Result = res
+	return ec.marshalNGeneralLedgerPreference2ᚕᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐGeneralLedgerPreferenceᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateGeneralLedgerPreferences(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_GeneralLedgerPreference_id(ctx, field)
+			case "accountID":
+				return ec.fieldContext_GeneralLedgerPreference_accountID(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GeneralLedgerPreference", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateGeneralLedgerPreferences_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -7259,6 +7489,34 @@ func (ec *executionContext) unmarshalInputWriteAccountInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputWriteGeneralLedgerPreferenceInput(ctx context.Context, obj interface{}) (model.WriteGeneralLedgerPreferenceInput, error) {
+	var it model.WriteGeneralLedgerPreferenceInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"accountID"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "accountID":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountID"))
+			it.AccountID, err = ec.unmarshalNID2int64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputWriteTransactionsInput(ctx context.Context, obj interface{}) (model.WriteTransactionsInput, error) {
 	var it model.WriteTransactionsInput
 	asMap := map[string]interface{}{}
@@ -7701,6 +7959,41 @@ func (ec *executionContext) _Credential(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var generalLedgerPreferenceImplementors = []string{"GeneralLedgerPreference"}
+
+func (ec *executionContext) _GeneralLedgerPreference(ctx context.Context, sel ast.SelectionSet, obj *model.GeneralLedgerPreference) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, generalLedgerPreferenceImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("GeneralLedgerPreference")
+		case "id":
+
+			out.Values[i] = ec._GeneralLedgerPreference_id(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "accountID":
+
+			out.Values[i] = ec._GeneralLedgerPreference_accountID(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var journalImplementors = []string{"Journal"}
 
 func (ec *executionContext) _Journal(ctx context.Context, sel ast.SelectionSet, obj *model.Journal) graphql.Marshaler {
@@ -7847,6 +8140,15 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_storeTransactions(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "updateGeneralLedgerPreferences":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateGeneralLedgerPreferences(ctx, field)
 			})
 
 			if out.Values[i] == graphql.Null {
@@ -8896,6 +9198,60 @@ func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.S
 	return graphql.WrapContextMarshaler(ctx, res)
 }
 
+func (ec *executionContext) marshalNGeneralLedgerPreference2ᚕᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐGeneralLedgerPreferenceᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.GeneralLedgerPreference) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNGeneralLedgerPreference2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐGeneralLedgerPreference(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNGeneralLedgerPreference2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐGeneralLedgerPreference(ctx context.Context, sel ast.SelectionSet, v *model.GeneralLedgerPreference) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._GeneralLedgerPreference(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNID2int64(ctx context.Context, v interface{}) (int64, error) {
 	res, err := graphql.UnmarshalInt64(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -8918,6 +9274,27 @@ func (ec *executionContext) unmarshalNID2string(ctx context.Context, v interface
 
 func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
 	res := graphql.MarshalID(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) unmarshalNID2ᚖint64(ctx context.Context, v interface{}) (*int64, error) {
+	res, err := graphql.UnmarshalInt64(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNID2ᚖint64(ctx context.Context, sel ast.SelectionSet, v *int64) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	res := graphql.MarshalInt64(*v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -9115,6 +9492,28 @@ func (ec *executionContext) unmarshalNWriteAccountGroupInput2githubᚗcomᚋQuic
 func (ec *executionContext) unmarshalNWriteAccountInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐWriteAccountInput(ctx context.Context, v interface{}) (model.WriteAccountInput, error) {
 	res, err := ec.unmarshalInputWriteAccountInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNWriteGeneralLedgerPreferenceInput2ᚕᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐWriteGeneralLedgerPreferenceInputᚄ(ctx context.Context, v interface{}) ([]*model.WriteGeneralLedgerPreferenceInput, error) {
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]*model.WriteGeneralLedgerPreferenceInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNWriteGeneralLedgerPreferenceInput2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐWriteGeneralLedgerPreferenceInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNWriteGeneralLedgerPreferenceInput2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐWriteGeneralLedgerPreferenceInput(ctx context.Context, v interface{}) (*model.WriteGeneralLedgerPreferenceInput, error) {
+	res, err := ec.unmarshalInputWriteGeneralLedgerPreferenceInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNWriteTransactionsInput2ᚕᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐWriteTransactionsInputᚄ(ctx context.Context, v interface{}) ([]*model.WriteTransactionsInput, error) {

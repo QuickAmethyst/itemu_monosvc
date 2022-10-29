@@ -13,3 +13,7 @@ type AccountGroupStatement struct {
 type AccountStatement struct {
 	ID int64
 }
+
+type GeneralLedgerPreferenceStatement struct {
+	ID int64
+}

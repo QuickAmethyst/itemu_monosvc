@@ -27,12 +27,40 @@ type Writer interface {
 	DeleteAccountByID(ctx context.Context, id int64) (err error)
 
 	StoreTransactions(ctx context.Context, userID uuid.UUID, transactions []Transaction) (journal *domain.Journal, err error)
+
+	UpdateGeneralLedgerPreferenceByID(ctx context.Context, id int64, preference *domain.GeneralLedgerPreference) (err error)
+	UpdateGeneralLedgerPreferences(ctx context.Context, preferences []domain.GeneralLedgerPreference) (err error)
 }
 
 type writer struct {
 	logger logger.Logger
 	db     sql.DB
 	reader Reader
+}
+
+func (w *writer) UpdateGeneralLedgerPreferences(ctx context.Context, preferences []domain.GeneralLedgerPreference) (err error) {
+	err = w.db.Transaction(ctx, nil, func(tx *sql.Tx) error {
+		for _, preference := range preferences {
+			err = w.UpdateGeneralLedgerPreferenceByID(ctx, preference.ID, &preference)
+			if err != nil {
+				err = errors.PropagateWithCode(err, UpdateGeneralLedgerPreferenceFailed, "Update general ledger preference failed")
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	return
+}
+
+func (w *writer) UpdateGeneralLedgerPreferenceByID(ctx context.Context, id int64, preference *domain.GeneralLedgerPreference) (err error) {
+	if _, err = w.db.Updates(ctx, "general_ledger_preferences", preference, &GeneralLedgerPreferenceStatement{ID: id}); err != nil {
+		err = errors.PropagateWithCode(goErr.New("update general ledger preference by id failed"), UpdateGeneralLedgerPreferenceFailed, "creator unknown")
+		return
+	}
+
+	return
 }
 
 func (w *writer) StoreTransactions(ctx context.Context, userID uuid.UUID, transactions []Transaction) (journal *domain.Journal, err error) {

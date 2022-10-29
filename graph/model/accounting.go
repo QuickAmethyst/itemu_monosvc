@@ -84,19 +84,19 @@ type AccountGroupInput struct {
 }
 
 type Account struct {
-	ID       int64 `json:"id"`
+	ID       int64  `json:"id"`
 	Name     string `json:"name"`
-	GroupID  int64    `json:"groupID"`
-	Inactive bool  `json:"inactive"`
+	GroupID  int64  `json:"groupID"`
+	Inactive bool   `json:"inactive"`
 }
 
 type WriteAccountInput struct {
 	Name     string `json:"name"`
-	GroupID  int64    `json:"groupID"`
+	GroupID  int64  `json:"groupID"`
 	Inactive *bool  `json:"inactive"`
 }
 
-func (w *WriteAccountInput) Domain()  (account domain.Account) {
+func (w *WriteAccountInput) Domain() (account domain.Account) {
 	account.Name = w.Name
 	account.GroupID = w.GroupID
 
@@ -118,6 +118,23 @@ type Journal struct {
 }
 
 type WriteTransactionsInput struct {
-	AccountID int64     `json:"accountID"`
+	AccountID int64   `json:"accountID"`
 	Amount    float64 `json:"amount"`
+}
+
+type GeneralLedgerPreference struct {
+	ID        int64  `json:"id"`
+	AccountID int64 `json:"accountID"`
+}
+
+type WriteGeneralLedgerPreferenceInput struct {
+	AccountID int64 `json:"accountID"`
+}
+
+func (w *WriteGeneralLedgerPreferenceInput) Domain() (preference domain.GeneralLedgerPreference, err error) {
+	if err = preference.AccountID.Scan(w.AccountID); err != nil {
+		return
+	}
+
+	return
 }

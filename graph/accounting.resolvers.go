@@ -8,6 +8,7 @@ import (
 
 	"github.com/QuickAmethyst/monosvc/graph/generated"
 	"github.com/QuickAmethyst/monosvc/graph/model"
+	"github.com/QuickAmethyst/monosvc/module/accounting/domain"
 	"github.com/QuickAmethyst/monosvc/module/accounting/repository/sql"
 	"github.com/QuickAmethyst/monosvc/stdlibgo/appcontext"
 	libErr "github.com/QuickAmethyst/monosvc/stdlibgo/errors"
@@ -277,6 +278,36 @@ func (r *mutationResolver) StoreTransactions(ctx context.Context, input []*model
 		Amount:    journal.Amount,
 		CreatedAt: journal.CreatedAt,
 	}, nil
+}
+
+// UpdateGeneralLedgerPreferences is the resolver for the updateGeneralLedgerPreferences field.
+func (r *mutationResolver) UpdateGeneralLedgerPreferences(ctx context.Context, input []*model.WriteGeneralLedgerPreferenceInput) ([]*model.GeneralLedgerPreference, error) {
+	preferences := make([]domain.GeneralLedgerPreference, len(input))
+
+	for i, o := range input {
+		d, err := o.Domain()
+		if err != nil {
+			r.Logger.Error(err.Error())
+			return nil, sdkGraphql.NewError(err, "Failed on update generate ledger preferences", libErr.GetCode(err))
+		}
+
+		preferences[i] = d
+	}
+
+	if err := r.AccountingUsecase.UpdateGeneralLedgerPreferences(ctx, preferences); err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on update general ledger preferences", libErr.GetCode(err))
+	}
+
+	result := make([]*model.GeneralLedgerPreference, len(preferences))
+	for i, preference := range preferences {
+		result[i] = &model.GeneralLedgerPreference{
+			ID: preference.ID,
+			AccountID: preference.AccountID.Int64,
+		}
+	}
+
+	return result, nil
 }
 
 // AccountClasses is the resolver for the accountClasses field.

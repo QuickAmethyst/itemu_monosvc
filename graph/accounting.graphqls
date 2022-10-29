@@ -26,6 +26,12 @@ extend type Mutation {
     deleteAccountByID(id: Int!): Int! @authenticated
 
     storeTransactions(input: [WriteTransactionsInput!]!): Journal! @authenticated
+
+    updateGeneralLedgerPreferences(input: [WriteGeneralLedgerPreferenceInput!]!): [GeneralLedgerPreference!]! @authenticated
+}
+
+input WriteGeneralLedgerPreferenceInput {
+    accountID: ID!
 }
 
 input WriteTransactionsInput {
@@ -109,4 +115,9 @@ type Journal {
     id: ID!
     amount: Float!
     createdAt: Time!
+}
+
+type GeneralLedgerPreference {
+    id: ID!
+    accountID: ID!
 }

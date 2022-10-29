@@ -21,10 +21,16 @@ type Writer interface {
 	DeleteAccountByID(ctx context.Context, id int64) (err error)
 
 	StoreTransactions(ctx context.Context, userID uuid.UUID, transactions []sql.Transaction) (journal *domain.Journal, err error)
+
+	UpdateGeneralLedgerPreferences(ctx context.Context, preferences []domain.GeneralLedgerPreference) (err error)
 }
 
 type writer struct {
 	AccountingSQL sql.SQL
+}
+
+func (w *writer) UpdateGeneralLedgerPreferences(ctx context.Context, preferences []domain.GeneralLedgerPreference) (err error) {
+	return w.AccountingSQL.UpdateGeneralLedgerPreferences(ctx, preferences)
 }
 
 func (w *writer) StoreTransactions(ctx context.Context, userID uuid.UUID, transactions []sql.Transaction) (journal *domain.Journal, err error) {
