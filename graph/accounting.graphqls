@@ -10,6 +10,8 @@ extend type Query {
 
     accounts(input: AccountInput): [Account!]! @authenticated
     account(input: AccountInput!): Account! @authenticated
+
+    generalLedgerPreferences(input: GeneralLedgerPreferenceInput): [GeneralLedgerPreference!]! @authenticated
 }
 
 extend type Mutation {
@@ -30,7 +32,12 @@ extend type Mutation {
     updateGeneralLedgerPreferences(input: [WriteGeneralLedgerPreferenceInput!]!): [GeneralLedgerPreference!]! @authenticated
 }
 
+input GeneralLedgerPreferenceInput {
+    id: ID
+}
+
 input WriteGeneralLedgerPreferenceInput {
+    id: ID!
     accountID: ID!
 }
 
@@ -120,4 +127,5 @@ type Journal {
 type GeneralLedgerPreference {
     id: ID!
     accountID: ID!
+    account: Account
 }

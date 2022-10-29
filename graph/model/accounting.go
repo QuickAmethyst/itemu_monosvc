@@ -123,18 +123,24 @@ type WriteTransactionsInput struct {
 }
 
 type GeneralLedgerPreference struct {
-	ID        int64  `json:"id"`
+	ID        int64 `json:"id"`
 	AccountID int64 `json:"accountID"`
 }
 
 type WriteGeneralLedgerPreferenceInput struct {
+	ID        int64 `json:"id"`
 	AccountID int64 `json:"accountID"`
 }
 
 func (w *WriteGeneralLedgerPreferenceInput) Domain() (preference domain.GeneralLedgerPreference, err error) {
+	preference.ID = w.ID
 	if err = preference.AccountID.Scan(w.AccountID); err != nil {
 		return
 	}
 
 	return
+}
+
+type GeneralLedgerPreferenceInput struct {
+	ID int64 `json:"id"`
 }

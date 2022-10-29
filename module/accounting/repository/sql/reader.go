@@ -24,10 +24,30 @@ type Reader interface {
 	GetAllAccounts(ctx context.Context, stmt AccountStatement) (result []domain.Account, err error)
 	GetAccount(ctx context.Context, stmt AccountStatement) (account domain.Account, err error)
 	GetAccountByID(ctx context.Context, id int64) (account domain.Account, err error)
+
+	GetAllGeneralLedgerPreferences(ctx context.Context, stmt GeneralLedgerPreferenceStatement) (preferences []domain.GeneralLedgerPreference, err error)
 }
 
 type reader struct {
 	db sql.DB
+}
+
+func (r *reader) GetAllGeneralLedgerPreferences(ctx context.Context, stmt GeneralLedgerPreferenceStatement) (preferences []domain.GeneralLedgerPreference, err error) {
+	preferences = make([]domain.GeneralLedgerPreference, 0)
+	fromClause := "FROM general_ledger_preferences"
+	whereClause, whereClauseArgs, err := qb.NewWhereClause(stmt)
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetAllGeneralLedgerPreferencesFailed, "Failed on get all general ledger preferences")
+		return
+	}
+
+	query := fmt.Sprintf("SELECT id, account_id %s %s", fromClause, whereClause)
+	if err = r.db.SelectContext(ctx, &preferences, r.db.Rebind(query), whereClauseArgs...); err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetAllGeneralLedgerPreferencesFailed, "Failed on get all general ledger preferences")
+		return
+	}
+
+	return
 }
 
 func (r *reader) GetAllAccounts(ctx context.Context, stmt AccountStatement) (result []domain.Account, err error) {
@@ -55,7 +75,7 @@ func (r *reader) GetAccount(ctx context.Context, stmt AccountStatement) (account
 		return
 	}
 
-	query := fmt.Sprintf("SELECT id, name, group_id, inactive %s", whereClause)
+	query := fmt.Sprintf("SELECT id, name, group_id, inactive FROM accounts %s", whereClause)
 	if err = r.db.GetContext(ctx, &account, r.db.Rebind(query), whereClauseArgs...); err != nil {
 		err = errors.PropagateWithCode(err, EcodeGetAccountFailed, "Failed on get account failed")
 		return
@@ -167,6 +187,44 @@ func (r *reader) GetAllAccountClasses(ctx context.Context, stmt AccountClassStat
 	}
 
 	return
+}
+
+
+func (r *reader) ValidatePreferences(ctx context.Context, preferences []domain.GeneralLedgerPreference) (err error) {
+	var fieldErrors []errors.FieldError
+
+	query := `
+		SELECT account_classes.id, account_classes.name, account_classes.type_id, account_classes.inactive
+		FROM account_classes, account_groups, accounts
+		WHERE 
+			accounts.group_id = account_groups.id AND account_groups.class_id = account_classes.id AND
+			accounts.id = ?
+	`
+	for _, preference := range preferences {
+		var accountClass domain.AccountClass
+		field := fmt.Sprintf("%d", preference.ID)
+
+		if preference.AccountID.Valid && preference.AccountID.Int64 != 0 {
+			err = r.db.GetContext(ctx, &accountClass, query, preference.AccountID)
+			if err == sql.ErrNoRows {
+				fieldErrors = append(fieldErrors, errors.FieldError{Field: field, Message: "Account not found"})
+			} else if err != nil {
+				fieldErrors = append(fieldErrors, errors.FieldError{Field: field, Message: err.Error()})
+				continue
+			}
+		}
+
+		if preference.ID == int64(RetainedEarnings) && !IsBalanceSheetAccount(accountClass.TypeID) {
+			fieldErrors = append(fieldErrors, errors.FieldError{Field: field, Message: "Account must be one of the balance sheet account"})
+			continue
+		}
+	}
+
+	if len(fieldErrors) == 0 {
+		return nil
+	}
+
+	return errors.ValidationErrors(fieldErrors)
 }
 
 func NewReader(opt *Options) Reader {

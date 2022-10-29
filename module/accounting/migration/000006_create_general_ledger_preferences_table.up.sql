@@ -7,5 +7,4 @@ CREATE TABLE IF NOT EXISTS general_ledger_preferences
 );
 
 INSERT INTO general_ledger_preferences (id)
-VALUES (1),
-       (2);
+VALUES (1);

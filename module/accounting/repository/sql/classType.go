@@ -20,3 +20,6 @@ var classTypes = map[int64]domain.AccountClassType{
 	ExpenseClassType:     {ExpenseClassType, "Expense"},
 }
 
+func IsBalanceSheetAccount(classType int64) bool {
+	return classType >= EquityClassType
+}

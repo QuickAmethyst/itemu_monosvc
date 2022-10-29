@@ -22,10 +22,16 @@ type Reader interface {
 	GetAllAccounts(ctx context.Context, stmt sql.AccountStatement) (result []domain.Account, err error)
 	GetAccount(ctx context.Context, stmt sql.AccountStatement) (account domain.Account, err error)
 	GetAccountByID(ctx context.Context, id int64) (account domain.Account, err error)
+
+	GetAllGeneralLedgerPreferences(ctx context.Context, stmt sql.GeneralLedgerPreferenceStatement) (preferences []domain.GeneralLedgerPreference, err error)
 }
 
 type reader struct {
 	AccountingSQL sql.SQL
+}
+
+func (r *reader) GetAllGeneralLedgerPreferences(ctx context.Context, stmt sql.GeneralLedgerPreferenceStatement) (preferences []domain.GeneralLedgerPreference, err error) {
+	return r.AccountingSQL.GetAllGeneralLedgerPreferences(ctx, stmt)
 }
 
 func (r *reader) GetAllAccounts(ctx context.Context, stmt sql.AccountStatement) (result []domain.Account, err error) {

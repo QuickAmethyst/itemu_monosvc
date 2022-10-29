@@ -111,6 +111,26 @@ func (r *accountGroupResolver) Child(ctx context.Context, obj *model.AccountGrou
 	return result, nil
 }
 
+// Account is the resolver for the account field.
+func (r *generalLedgerPreferenceResolver) Account(ctx context.Context, obj *model.GeneralLedgerPreference) (*model.Account, error) {
+	if obj == nil || obj.AccountID == 0 {
+		return nil, nil
+	}
+
+	account, err := r.AccountingUsecase.GetAccountByID(ctx, obj.AccountID)
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on get account", libErr.GetCode(err))
+	}
+
+	return &model.Account{
+		ID:       account.ID,
+		Name:     account.Name,
+		GroupID:  account.GroupID,
+		Inactive: account.Inactive,
+	}, nil
+}
+
 // StoreAccountClass is the resolver for the storeAccountClass field.
 func (r *mutationResolver) StoreAccountClass(ctx context.Context, input model.WriteAccountClassInput) (*model.AccountClass, error) {
 	accountClass := input.Domain()
@@ -302,7 +322,7 @@ func (r *mutationResolver) UpdateGeneralLedgerPreferences(ctx context.Context, i
 	result := make([]*model.GeneralLedgerPreference, len(preferences))
 	for i, preference := range preferences {
 		result[i] = &model.GeneralLedgerPreference{
-			ID: preference.ID,
+			ID:        preference.ID,
 			AccountID: preference.AccountID.Int64,
 		}
 	}
@@ -467,6 +487,30 @@ func (r *queryResolver) Account(ctx context.Context, input model.AccountInput) (
 	}, nil
 }
 
+// GeneralLedgerPreferences is the resolver for the generalLedgerPreferences field.
+func (r *queryResolver) GeneralLedgerPreferences(ctx context.Context, input *model.GeneralLedgerPreferenceInput) ([]*model.GeneralLedgerPreference, error) {
+	var statement sql.GeneralLedgerPreferenceStatement
+	if input != nil {
+		statement = sql.GeneralLedgerPreferenceStatement{ID: input.ID}
+	}
+
+	preferences, err := r.AccountingUsecase.GetAllGeneralLedgerPreferences(ctx, statement)
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on get general ledger preferences", libErr.GetCode(err))
+	}
+
+	result := make([]*model.GeneralLedgerPreference, len(preferences))
+	for i, preference := range preferences {
+		result[i] = &model.GeneralLedgerPreference{
+			ID:        preference.ID,
+			AccountID: preference.AccountID.Int64,
+		}
+	}
+
+	return result, nil
+}
+
 // Account returns generated.AccountResolver implementation.
 func (r *Resolver) Account() generated.AccountResolver { return &accountResolver{r} }
 
@@ -476,6 +520,12 @@ func (r *Resolver) AccountClass() generated.AccountClassResolver { return &accou
 // AccountGroup returns generated.AccountGroupResolver implementation.
 func (r *Resolver) AccountGroup() generated.AccountGroupResolver { return &accountGroupResolver{r} }
 
+// GeneralLedgerPreference returns generated.GeneralLedgerPreferenceResolver implementation.
+func (r *Resolver) GeneralLedgerPreference() generated.GeneralLedgerPreferenceResolver {
+	return &generalLedgerPreferenceResolver{r}
+}
+
 type accountResolver struct{ *Resolver }
 type accountClassResolver struct{ *Resolver }
 type accountGroupResolver struct{ *Resolver }
+type generalLedgerPreferenceResolver struct{ *Resolver }

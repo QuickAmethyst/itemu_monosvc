@@ -40,6 +40,7 @@ type ResolverRoot interface {
 	Account() AccountResolver
 	AccountClass() AccountClassResolver
 	AccountGroup() AccountGroupResolver
+	GeneralLedgerPreference() GeneralLedgerPreferenceResolver
 	Mutation() MutationResolver
 	Query() QueryResolver
 }
@@ -93,6 +94,7 @@ type ComplexityRoot struct {
 	}
 
 	GeneralLedgerPreference struct {
+		Account   func(childComplexity int) int
 		AccountID func(childComplexity int) int
 		ID        func(childComplexity int) int
 	}
@@ -128,15 +130,16 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Account           func(childComplexity int, input model.AccountInput) int
-		AccountClass      func(childComplexity int, input model.AccountClassInput) int
-		AccountClassType  func(childComplexity int, input model.AccountClassTypeInput) int
-		AccountClassTypes func(childComplexity int) int
-		AccountClasses    func(childComplexity int) int
-		AccountGroup      func(childComplexity int, input model.AccountGroupInput) int
-		AccountGroups     func(childComplexity int, input *model.AccountGroupInput) int
-		Accounts          func(childComplexity int, input *model.AccountInput) int
-		Uoms              func(childComplexity int, input *model.UomsInput) int
+		Account                  func(childComplexity int, input model.AccountInput) int
+		AccountClass             func(childComplexity int, input model.AccountClassInput) int
+		AccountClassType         func(childComplexity int, input model.AccountClassTypeInput) int
+		AccountClassTypes        func(childComplexity int) int
+		AccountClasses           func(childComplexity int) int
+		AccountGroup             func(childComplexity int, input model.AccountGroupInput) int
+		AccountGroups            func(childComplexity int, input *model.AccountGroupInput) int
+		Accounts                 func(childComplexity int, input *model.AccountInput) int
+		GeneralLedgerPreferences func(childComplexity int, input *model.GeneralLedgerPreferenceInput) int
+		Uoms                     func(childComplexity int, input *model.UomsInput) int
 	}
 
 	Uom struct {
@@ -164,6 +167,9 @@ type AccountGroupResolver interface {
 
 	Child(ctx context.Context, obj *model.AccountGroup) ([]*model.AccountGroup, error)
 }
+type GeneralLedgerPreferenceResolver interface {
+	Account(ctx context.Context, obj *model.GeneralLedgerPreference) (*model.Account, error)
+}
 type MutationResolver interface {
 	StoreAccountClass(ctx context.Context, input model.WriteAccountClassInput) (*model.AccountClass, error)
 	UpdateAccountClassByID(ctx context.Context, id int, input model.WriteAccountClassInput) (*model.AccountClass, error)
@@ -190,6 +196,7 @@ type QueryResolver interface {
 	AccountGroup(ctx context.Context, input model.AccountGroupInput) (*model.AccountGroup, error)
 	Accounts(ctx context.Context, input *model.AccountInput) ([]*model.Account, error)
 	Account(ctx context.Context, input model.AccountInput) (*model.Account, error)
+	GeneralLedgerPreferences(ctx context.Context, input *model.GeneralLedgerPreferenceInput) ([]*model.GeneralLedgerPreference, error)
 	Uoms(ctx context.Context, input *model.UomsInput) (*model.UomsResult, error)
 }
 
@@ -382,6 +389,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Credential.RefreshToken(childComplexity), true
+
+	case "GeneralLedgerPreference.account":
+		if e.complexity.GeneralLedgerPreference.Account == nil {
+			break
+		}
+
+		return e.complexity.GeneralLedgerPreference.Account(childComplexity), true
 
 	case "GeneralLedgerPreference.accountID":
 		if e.complexity.GeneralLedgerPreference.AccountID == nil {
@@ -705,6 +719,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Accounts(childComplexity, args["input"].(*model.AccountInput)), true
 
+	case "Query.generalLedgerPreferences":
+		if e.complexity.Query.GeneralLedgerPreferences == nil {
+			break
+		}
+
+		args, err := ec.field_Query_generalLedgerPreferences_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GeneralLedgerPreferences(childComplexity, args["input"].(*model.GeneralLedgerPreferenceInput)), true
+
 	case "Query.uoms":
 		if e.complexity.Query.Uoms == nil {
 			break
@@ -771,6 +797,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputAccountClassTypeInput,
 		ec.unmarshalInputAccountGroupInput,
 		ec.unmarshalInputAccountInput,
+		ec.unmarshalInputGeneralLedgerPreferenceInput,
 		ec.unmarshalInputPagingInput,
 		ec.unmarshalInputSignInInput,
 		ec.unmarshalInputUomsInput,
@@ -852,6 +879,8 @@ var sources = []*ast.Source{
 
     accounts(input: AccountInput): [Account!]! @authenticated
     account(input: AccountInput!): Account! @authenticated
+
+    generalLedgerPreferences(input: GeneralLedgerPreferenceInput): [GeneralLedgerPreference!]! @authenticated
 }
 
 extend type Mutation {
@@ -872,7 +901,12 @@ extend type Mutation {
     updateGeneralLedgerPreferences(input: [WriteGeneralLedgerPreferenceInput!]!): [GeneralLedgerPreference!]! @authenticated
 }
 
+input GeneralLedgerPreferenceInput {
+    id: ID
+}
+
 input WriteGeneralLedgerPreferenceInput {
+    id: ID!
     accountID: ID!
 }
 
@@ -962,6 +996,7 @@ type Journal {
 type GeneralLedgerPreference {
     id: ID!
     accountID: ID!
+    account: Account
 }
 `, BuiltIn: false},
 	{Name: "../auth.graphqls", Input: `extend type Mutation {
@@ -1396,6 +1431,21 @@ func (ec *executionContext) field_Query_accounts_args(ctx context.Context, rawAr
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 		arg0, err = ec.unmarshalOAccountInput2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_generalLedgerPreferences_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *model.GeneralLedgerPreferenceInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalOGeneralLedgerPreferenceInput2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐGeneralLedgerPreferenceInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -2693,9 +2743,9 @@ func (ec *executionContext) _GeneralLedgerPreference_accountID(ctx context.Conte
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*int64)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNID2ᚖint64(ctx, field.Selections, res)
+	return ec.marshalNID2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_GeneralLedgerPreference_accountID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -2706,6 +2756,59 @@ func (ec *executionContext) fieldContext_GeneralLedgerPreference_accountID(ctx c
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _GeneralLedgerPreference_account(ctx context.Context, field graphql.CollectedField, obj *model.GeneralLedgerPreference) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_GeneralLedgerPreference_account(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.GeneralLedgerPreference().Account(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.Account)
+	fc.Result = res
+	return ec.marshalOAccount2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccount(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_GeneralLedgerPreference_account(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GeneralLedgerPreference",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Account_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Account_name(ctx, field)
+			case "groupID":
+				return ec.fieldContext_Account_groupID(ctx, field)
+			case "inactive":
+				return ec.fieldContext_Account_inactive(ctx, field)
+			case "group":
+				return ec.fieldContext_Account_group(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Account", field.Name)
 		},
 	}
 	return fc, nil
@@ -3748,6 +3851,8 @@ func (ec *executionContext) fieldContext_Mutation_updateGeneralLedgerPreferences
 				return ec.fieldContext_GeneralLedgerPreference_id(ctx, field)
 			case "accountID":
 				return ec.fieldContext_GeneralLedgerPreference_accountID(ctx, field)
+			case "account":
+				return ec.fieldContext_GeneralLedgerPreference_account(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type GeneralLedgerPreference", field.Name)
 		},
@@ -4864,6 +4969,89 @@ func (ec *executionContext) fieldContext_Query_account(ctx context.Context, fiel
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_account_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_generalLedgerPreferences(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_generalLedgerPreferences(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Query().GeneralLedgerPreferences(rctx, fc.Args["input"].(*model.GeneralLedgerPreferenceInput))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.Authenticated == nil {
+				return nil, errors.New("directive authenticated is not implemented")
+			}
+			return ec.directives.Authenticated(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.([]*model.GeneralLedgerPreference); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be []*github.com/QuickAmethyst/monosvc/graph/model.GeneralLedgerPreference`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.GeneralLedgerPreference)
+	fc.Result = res
+	return ec.marshalNGeneralLedgerPreference2ᚕᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐGeneralLedgerPreferenceᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_generalLedgerPreferences(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_GeneralLedgerPreference_id(ctx, field)
+			case "accountID":
+				return ec.fieldContext_GeneralLedgerPreference_accountID(ctx, field)
+			case "account":
+				return ec.fieldContext_GeneralLedgerPreference_account(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type GeneralLedgerPreference", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_generalLedgerPreferences_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -7249,6 +7437,34 @@ func (ec *executionContext) unmarshalInputAccountInput(ctx context.Context, obj 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputGeneralLedgerPreferenceInput(ctx context.Context, obj interface{}) (model.GeneralLedgerPreferenceInput, error) {
+	var it model.GeneralLedgerPreferenceInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			it.ID, err = ec.unmarshalOID2int64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputPagingInput(ctx context.Context, obj interface{}) (model.PagingInput, error) {
 	var it model.PagingInput
 	asMap := map[string]interface{}{}
@@ -7496,13 +7712,21 @@ func (ec *executionContext) unmarshalInputWriteGeneralLedgerPreferenceInput(ctx 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"accountID"}
+	fieldsInOrder := [...]string{"id", "accountID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "id":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			it.ID, err = ec.unmarshalNID2int64(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "accountID":
 			var err error
 
@@ -7974,15 +8198,32 @@ func (ec *executionContext) _GeneralLedgerPreference(ctx context.Context, sel as
 			out.Values[i] = ec._GeneralLedgerPreference_id(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "accountID":
 
 			out.Values[i] = ec._GeneralLedgerPreference_accountID(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
+		case "account":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._GeneralLedgerPreference_account(ctx, field, obj)
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -8433,6 +8674,29 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_account(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
+		case "generalLedgerPreferences":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_generalLedgerPreferences(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -9282,27 +9546,6 @@ func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.Selec
 	return res
 }
 
-func (ec *executionContext) unmarshalNID2ᚖint64(ctx context.Context, v interface{}) (*int64, error) {
-	res, err := graphql.UnmarshalInt64(v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNID2ᚖint64(ctx context.Context, sel ast.SelectionSet, v *int64) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	res := graphql.MarshalInt64(*v)
-	if res == graphql.Null {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-	}
-	return res
-}
-
 func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v interface{}) (int, error) {
 	res, err := graphql.UnmarshalInt(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -9796,6 +10039,13 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 	return res
 }
 
+func (ec *executionContext) marshalOAccount2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccount(ctx context.Context, sel ast.SelectionSet, v *model.Account) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Account(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOAccountClass2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClass(ctx context.Context, sel ast.SelectionSet, v *model.AccountClass) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -9856,6 +10106,24 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 		return graphql.Null
 	}
 	res := graphql.MarshalBoolean(*v)
+	return res
+}
+
+func (ec *executionContext) unmarshalOGeneralLedgerPreferenceInput2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐGeneralLedgerPreferenceInput(ctx context.Context, v interface{}) (*model.GeneralLedgerPreferenceInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputGeneralLedgerPreferenceInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOID2int64(ctx context.Context, v interface{}) (int64, error) {
+	res, err := graphql.UnmarshalInt64(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOID2int64(ctx context.Context, sel ast.SelectionSet, v int64) graphql.Marshaler {
+	res := graphql.MarshalInt64(v)
 	return res
 }
 

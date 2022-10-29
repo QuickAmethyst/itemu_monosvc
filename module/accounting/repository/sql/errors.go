@@ -21,9 +21,12 @@ const (
 	EcodeStoreJournalFailed
 	EcodeBeginTxFailed
 	EcodeRollbackTxFailed
+	EcodeCloseRowsFailed
 	EcodeStoreTransactionAtJournalFailed
 	EcodeStoreTransactionAtGeneralLedgerFailed
 	EcodeStoreTransactionCreatedByRequired
 	EcodeTransactionNotBalance
-	UpdateGeneralLedgerPreferenceFailed
+	EcodeUpdateGeneralLedgerPreferenceFailed
+	EcodeGetAllGeneralLedgerPreferencesFailed
+	EcodeValidatePreferencesFailed
 )

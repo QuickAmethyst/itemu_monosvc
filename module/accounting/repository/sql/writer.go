@@ -43,7 +43,7 @@ func (w *writer) UpdateGeneralLedgerPreferences(ctx context.Context, preferences
 		for _, preference := range preferences {
 			err = w.UpdateGeneralLedgerPreferenceByID(ctx, preference.ID, &preference)
 			if err != nil {
-				err = errors.PropagateWithCode(err, UpdateGeneralLedgerPreferenceFailed, "Update general ledger preference failed")
+				err = errors.PropagateWithCode(err, EcodeUpdateGeneralLedgerPreferenceFailed, "Update general ledger preference failed")
 				return err
 			}
 		}
@@ -56,7 +56,7 @@ func (w *writer) UpdateGeneralLedgerPreferences(ctx context.Context, preferences
 
 func (w *writer) UpdateGeneralLedgerPreferenceByID(ctx context.Context, id int64, preference *domain.GeneralLedgerPreference) (err error) {
 	if _, err = w.db.Updates(ctx, "general_ledger_preferences", preference, &GeneralLedgerPreferenceStatement{ID: id}); err != nil {
-		err = errors.PropagateWithCode(goErr.New("update general ledger preference by id failed"), UpdateGeneralLedgerPreferenceFailed, "creator unknown")
+		err = errors.PropagateWithCode(goErr.New("update general ledger preference by id failed"), EcodeUpdateGeneralLedgerPreferenceFailed, "creator unknown")
 		return
 	}
 
