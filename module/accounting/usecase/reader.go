@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/QuickAmethyst/monosvc/module/accounting/domain"
 	"github.com/QuickAmethyst/monosvc/module/accounting/repository/sql"
+	qb "github.com/QuickAmethyst/monosvc/stdlibgo/querybuilder/sql"
 )
 
 type Reader interface {
@@ -24,10 +25,21 @@ type Reader interface {
 	GetAccountByID(ctx context.Context, id int64) (account domain.Account, err error)
 
 	GetAllGeneralLedgerPreferences(ctx context.Context, stmt sql.GeneralLedgerPreferenceStatement) (preferences []domain.GeneralLedgerPreference, err error)
+
+	GetFiscalYearList(ctx context.Context, stmt sql.FiscalYearStatement, p qb.Paging) (result []domain.FiscalYear, paging qb.Paging, err error)
+	GetActiveFiscalYear(ctx context.Context) (fiscalYear domain.FiscalYear, err error)
 }
 
 type reader struct {
 	AccountingSQL sql.SQL
+}
+
+func (r *reader) GetFiscalYearList(ctx context.Context, stmt sql.FiscalYearStatement, p qb.Paging) (result []domain.FiscalYear, paging qb.Paging, err error) {
+	return r.AccountingSQL.GetFiscalYearList(ctx, stmt, p)
+}
+
+func (r *reader) GetActiveFiscalYear(ctx context.Context) (fiscalYear domain.FiscalYear, err error) {
+	return r.AccountingSQL.GetActiveFiscalYear(ctx)
 }
 
 func (r *reader) GetAllGeneralLedgerPreferences(ctx context.Context, stmt sql.GeneralLedgerPreferenceStatement) (preferences []domain.GeneralLedgerPreference, err error) {

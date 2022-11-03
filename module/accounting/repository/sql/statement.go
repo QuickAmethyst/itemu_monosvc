@@ -17,3 +17,8 @@ type AccountStatement struct {
 type GeneralLedgerPreferenceStatement struct {
 	ID int64
 }
+
+type FiscalYearStatement struct {
+	ID          int64
+	ClosedNotEQ bool
+}

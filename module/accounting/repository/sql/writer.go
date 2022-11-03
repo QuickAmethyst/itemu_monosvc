@@ -30,6 +30,8 @@ type Writer interface {
 
 	UpdateGeneralLedgerPreferenceByID(ctx context.Context, id int64, preference *domain.GeneralLedgerPreference) (err error)
 	UpdateGeneralLedgerPreferences(ctx context.Context, preferences []domain.GeneralLedgerPreference) (err error)
+
+	StoreFiscalYear(ctx context.Context, fiscalYear *domain.FiscalYear) (err error)
 }
 
 type writer struct {
@@ -38,12 +40,34 @@ type writer struct {
 	reader Reader
 }
 
+func (w *writer) StoreFiscalYear(ctx context.Context, fiscalYear *domain.FiscalYear) (err error) {
+	if fiscalYear.EndDate.Before(fiscalYear.StartDate) {
+		err = errors.PropagateWithCode(fmt.Errorf("invalid fiscal year date"), EcodeValidateFiscalYearFailed, "Fiscal year end date must after start date")
+		return
+	}
+
+	query := "INSERT INTO fiscal_years (start_date, end_date) VALUES ($1, $2, $3) RETURNING id"
+	err = w.db.QueryRowContext(ctx, w.db.Rebind(query), fiscalYear.StartDate, fiscalYear.EndDate).Scan(&fiscalYear.ID)
+
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeStoreFiscalYearFailed, "Store fiscal year failed")
+		return
+	}
+
+	return
+}
+
 func (w *writer) UpdateGeneralLedgerPreferences(ctx context.Context, preferences []domain.GeneralLedgerPreference) (err error) {
+	if err = w.reader.ValidatePreferences(ctx, preferences); err != nil {
+		err = errors.PropagateWithCode(err, EcodeValidatePreferencesFailed, "Update general ledger preferences failed")
+		return
+	}
+
 	err = w.db.Transaction(ctx, nil, func(tx *sql.Tx) error {
 		for _, preference := range preferences {
-			err = w.UpdateGeneralLedgerPreferenceByID(ctx, preference.ID, &preference)
+			err = w.mustUpdateGeneralLedgerPreferenceByID(ctx, preference.ID, &preference)
 			if err != nil {
-				err = errors.PropagateWithCode(err, EcodeUpdateGeneralLedgerPreferenceFailed, "Update general ledger preference failed")
+				err = errors.PropagateWithCode(err, EcodeUpdateGeneralLedgerPreferenceFailed, "Update general ledger preferences failed")
 				return err
 			}
 		}
@@ -55,6 +79,24 @@ func (w *writer) UpdateGeneralLedgerPreferences(ctx context.Context, preferences
 }
 
 func (w *writer) UpdateGeneralLedgerPreferenceByID(ctx context.Context, id int64, preference *domain.GeneralLedgerPreference) (err error) {
+	err = w.reader.ValidatePreferences(ctx, []domain.GeneralLedgerPreference{
+		{ID: id, AccountID: preference.AccountID},
+	})
+
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeValidatePreferencesFailed, "Update general ledger preferences failed")
+		return
+	}
+
+	if err = w.mustUpdateGeneralLedgerPreferenceByID(ctx, id, preference); err != nil {
+		err = errors.PropagateWithCode(goErr.New("update general ledger preference by id failed"), EcodeUpdateGeneralLedgerPreferenceFailed, "creator unknown")
+		return
+	}
+
+	return
+}
+
+func (w *writer) mustUpdateGeneralLedgerPreferenceByID(ctx context.Context, id int64, preference *domain.GeneralLedgerPreference) (err error) {
 	if _, err = w.db.Updates(ctx, "general_ledger_preferences", preference, &GeneralLedgerPreferenceStatement{ID: id}); err != nil {
 		err = errors.PropagateWithCode(goErr.New("update general ledger preference by id failed"), EcodeUpdateGeneralLedgerPreferenceFailed, "creator unknown")
 		return

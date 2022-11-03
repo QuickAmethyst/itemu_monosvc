@@ -29,4 +29,8 @@ const (
 	EcodeUpdateGeneralLedgerPreferenceFailed
 	EcodeGetAllGeneralLedgerPreferencesFailed
 	EcodeValidatePreferencesFailed
+	EcodeStoreFiscalYearFailed
+	EcodeValidateFiscalYearFailed
+	EcodeGetFiscalYearListFailed
+	EcodeGetActiveFiscalYearFailed
 )

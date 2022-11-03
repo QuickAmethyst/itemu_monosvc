@@ -25,11 +25,60 @@ type Reader interface {
 	GetAccount(ctx context.Context, stmt AccountStatement) (account domain.Account, err error)
 	GetAccountByID(ctx context.Context, id int64) (account domain.Account, err error)
 
+	ValidatePreferences(ctx context.Context, preferences []domain.GeneralLedgerPreference) (err error)
 	GetAllGeneralLedgerPreferences(ctx context.Context, stmt GeneralLedgerPreferenceStatement) (preferences []domain.GeneralLedgerPreference, err error)
+
+	GetFiscalYearList(ctx context.Context, stmt FiscalYearStatement, p qb.Paging) (result []domain.FiscalYear, paging qb.Paging, err error)
+	GetActiveFiscalYear(ctx context.Context) (fiscalYear domain.FiscalYear, err error)
 }
 
 type reader struct {
 	db sql.DB
+}
+
+func (r *reader) GetActiveFiscalYear(ctx context.Context) (fiscalYear domain.FiscalYear, err error) {
+	whereClause, whereClauseArgs, err := qb.NewWhereClause(FiscalYearStatement{ClosedNotEQ: true})
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetActiveFiscalYearFailed, "Failed on get fiscal year")
+		return
+	}
+
+	query := fmt.Sprintf("SELECT id, start_date, end_date, closed FROM fiscal_years %s", whereClause)
+	if err = r.db.GetContext(ctx, &fiscalYear, r.db.Rebind(query), whereClauseArgs...); err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetActiveFiscalYearFailed, "Failed on get fiscal year failed")
+		return
+	}
+
+	return
+}
+
+func (r *reader) GetFiscalYearList(ctx context.Context, stmt FiscalYearStatement, p qb.Paging) (result []domain.FiscalYear, paging qb.Paging, err error) {
+	result = make([]domain.FiscalYear, 0)
+	paging = p
+	paging.Normalize()
+
+	fromClause := "FROM fiscal_years"
+	limitClause, limitClauseArgs := p.BuildQuery()
+	whereClause, whereClauseArgs, err := qb.NewWhereClause(stmt)
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetFiscalYearListFailed, "Failed on select fiscal year")
+		return
+	}
+
+	selectQuery := fmt.Sprintf("SELECT id, start_date, end_date, closed %s %s %s", fromClause, whereClause, limitClause)
+	countQuery := fmt.Sprintf("SELECT COUNT(*) %s %s", fromClause, whereClause)
+
+	if err = r.db.SelectContext(ctx, &result, r.db.Rebind(selectQuery), append(whereClauseArgs, limitClauseArgs...)...); err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetFiscalYearListFailed, "Failed on select fiscal year")
+		return
+	}
+
+	if err = r.db.GetContext(ctx, &paging.Total, r.db.Rebind(countQuery), whereClauseArgs...); err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetFiscalYearListFailed, "Failed on select count fiscal year")
+		return
+	}
+
+	return
 }
 
 func (r *reader) GetAllGeneralLedgerPreferences(ctx context.Context, stmt GeneralLedgerPreferenceStatement) (preferences []domain.GeneralLedgerPreference, err error) {
