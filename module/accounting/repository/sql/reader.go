@@ -29,6 +29,7 @@ type Reader interface {
 	GetAllGeneralLedgerPreferences(ctx context.Context, stmt GeneralLedgerPreferenceStatement) (preferences []domain.GeneralLedgerPreference, err error)
 
 	GetFiscalYearList(ctx context.Context, stmt FiscalYearStatement, p qb.Paging) (result []domain.FiscalYear, paging qb.Paging, err error)
+	GetFiscalYear(ctx context.Context, stmt FiscalYearStatement) (fiscalYear domain.FiscalYear, err error)
 	GetActiveFiscalYear(ctx context.Context) (fiscalYear domain.FiscalYear, err error)
 }
 
@@ -36,16 +37,26 @@ type reader struct {
 	db sql.DB
 }
 
-func (r *reader) GetActiveFiscalYear(ctx context.Context) (fiscalYear domain.FiscalYear, err error) {
-	whereClause, whereClauseArgs, err := qb.NewWhereClause(FiscalYearStatement{ClosedNotEQ: true})
+func (r *reader) GetFiscalYear(ctx context.Context, statement FiscalYearStatement) (fiscalYear domain.FiscalYear, err error) {
+	whereClause, whereClauseArgs, err := qb.NewWhereClause(statement)
 	if err != nil {
-		err = errors.PropagateWithCode(err, EcodeGetActiveFiscalYearFailed, "Failed on get fiscal year")
+		err = errors.PropagateWithCode(err, EcodeGetFiscalYearFailed, "Failed on get fiscal year")
 		return
 	}
 
 	query := fmt.Sprintf("SELECT id, start_date, end_date, closed FROM fiscal_years %s", whereClause)
 	if err = r.db.GetContext(ctx, &fiscalYear, r.db.Rebind(query), whereClauseArgs...); err != nil {
-		err = errors.PropagateWithCode(err, EcodeGetActiveFiscalYearFailed, "Failed on get fiscal year failed")
+		err = errors.PropagateWithCode(err, EcodeGetFiscalYearFailed, "Failed on get fiscal year failed")
+		return
+	}
+
+	return
+}
+
+func (r *reader) GetActiveFiscalYear(ctx context.Context) (fiscalYear domain.FiscalYear, err error) {
+	fiscalYear, err = r.GetFiscalYear(ctx, FiscalYearStatement{ClosedNotEQ: true})
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetActiveFiscalYearFailed, "Failed on get active fiscal year")
 		return
 	}
 

@@ -5,7 +5,6 @@ package graph
 
 import (
 	"context"
-
 	"github.com/QuickAmethyst/monosvc/graph/generated"
 	"github.com/QuickAmethyst/monosvc/graph/model"
 	"github.com/QuickAmethyst/monosvc/module/accounting/domain"
@@ -328,6 +327,23 @@ func (r *mutationResolver) UpdateGeneralLedgerPreferences(ctx context.Context, i
 	}
 
 	return result, nil
+}
+
+// StoreFiscalYear is the resolver for the storeFiscalYear field.
+func (r *mutationResolver) StoreFiscalYear(ctx context.Context, input model.WriteFiscalYearInput) (*model.FiscalYear, error) {
+	fiscalYear := input.Domain()
+
+	if err := r.AccountingUsecase.StoreFiscalYear(ctx, &fiscalYear); err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on store fiscal year", libErr.GetCode(err))
+	}
+
+	return &model.FiscalYear{
+		ID:        fiscalYear.ID,
+		StartDate: fiscalYear.StartDate,
+		EndDate:   fiscalYear.EndDate,
+		Closed:    fiscalYear.Closed,
+	}, nil
 }
 
 // AccountClasses is the resolver for the accountClasses field.

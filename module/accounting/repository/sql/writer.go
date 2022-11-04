@@ -41,13 +41,34 @@ type writer struct {
 }
 
 func (w *writer) StoreFiscalYear(ctx context.Context, fiscalYear *domain.FiscalYear) (err error) {
+	var intersectedFiscalYear domain.FiscalYear
+
 	if fiscalYear.EndDate.Before(fiscalYear.StartDate) {
 		err = errors.PropagateWithCode(fmt.Errorf("invalid fiscal year date"), EcodeValidateFiscalYearFailed, "Fiscal year end date must after start date")
 		return
 	}
 
-	query := "INSERT INTO fiscal_years (start_date, end_date) VALUES ($1, $2, $3) RETURNING id"
-	err = w.db.QueryRowContext(ctx, w.db.Rebind(query), fiscalYear.StartDate, fiscalYear.EndDate).Scan(&fiscalYear.ID)
+
+	args := []interface{}{fiscalYear.StartDate, fiscalYear.StartDate, fiscalYear.EndDate, fiscalYear.EndDate}
+	query := `
+		SELECT id, start_date, end_date, closed
+		FROM fiscal_years
+		WHERE (start_date <= ? AND end_date >= ?) OR (start_date >= ? AND end_date <= ?)
+	`
+
+	err = w.db.GetContext(ctx, &intersectedFiscalYear, query, args...)
+	if err != nil && err != sql.ErrNoRows {
+		err = errors.PropagateWithCode(err, EcodeStoreFiscalYearFailed, "Store fiscal year failed")
+		return
+	}
+
+	if err == nil {
+		err = errors.PropagateWithCode(fmt.Errorf("intersect with other fiscal year"), EcodeStoreFiscalYearFailed, "Fiscal year intersect with other fiscal year")
+		return
+	}
+
+	query = "INSERT INTO fiscal_years (start_date, end_date, closed) VALUES ($1, $2, $3) RETURNING id"
+	err = w.db.QueryRowContext(ctx, w.db.Rebind(query), fiscalYear.StartDate, fiscalYear.EndDate, fiscalYear.Closed).Scan(&fiscalYear.ID)
 
 	if err != nil {
 		err = errors.PropagateWithCode(err, EcodeStoreFiscalYearFailed, "Store fiscal year failed")

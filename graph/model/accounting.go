@@ -144,3 +144,23 @@ func (w *WriteGeneralLedgerPreferenceInput) Domain() (preference domain.GeneralL
 type GeneralLedgerPreferenceInput struct {
 	ID int64 `json:"id"`
 }
+
+type FiscalYear struct {
+	ID        int64    `json:"id"`
+	StartDate time.Time `json:"startDate"`
+	EndDate   time.Time `json:"endDate"`
+	Closed    bool      `json:"closed"`
+}
+
+type WriteFiscalYearInput struct {
+	StartDate time.Time `json:"startDate"`
+	EndDate   time.Time `json:"endDate"`
+	Closed    bool     `json:"closed"`
+}
+
+func (w *WriteFiscalYearInput) Domain() (fiscalYear domain.FiscalYear) {
+	fiscalYear.StartDate = w.StartDate
+	fiscalYear.EndDate = w.EndDate
+	fiscalYear.Closed = w.Closed
+	return
+}

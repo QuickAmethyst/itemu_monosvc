@@ -1,5 +1,7 @@
 package sql
 
+import "time"
+
 type AccountClassStatement struct {
 	ID int64
 }
@@ -19,6 +21,10 @@ type GeneralLedgerPreferenceStatement struct {
 }
 
 type FiscalYearStatement struct {
-	ID          int64
-	ClosedNotEQ bool
+	ID           int64
+	ClosedNotEQ  bool
+	StartDateGTE time.Time
+	StartDateLTE time.Time
+	EndDateGTE   time.Time
+	EndDateLTE   time.Time
 }

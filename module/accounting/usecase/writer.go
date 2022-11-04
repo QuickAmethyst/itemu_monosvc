@@ -23,10 +23,16 @@ type Writer interface {
 	StoreTransactions(ctx context.Context, userID uuid.UUID, transactions []sql.Transaction) (journal *domain.Journal, err error)
 
 	UpdateGeneralLedgerPreferences(ctx context.Context, preferences []domain.GeneralLedgerPreference) (err error)
+
+	StoreFiscalYear(ctx context.Context, fiscalYear *domain.FiscalYear) (err error)
 }
 
 type writer struct {
 	AccountingSQL sql.SQL
+}
+
+func (w *writer) StoreFiscalYear(ctx context.Context, fiscalYear *domain.FiscalYear) (err error) {
+	return w.AccountingSQL.StoreFiscalYear(ctx, fiscalYear)
 }
 
 func (w *writer) UpdateGeneralLedgerPreferences(ctx context.Context, preferences []domain.GeneralLedgerPreference) (err error) {

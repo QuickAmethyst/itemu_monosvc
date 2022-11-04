@@ -32,5 +32,6 @@ const (
 	EcodeStoreFiscalYearFailed
 	EcodeValidateFiscalYearFailed
 	EcodeGetFiscalYearListFailed
+	EcodeGetFiscalYearFailed
 	EcodeGetActiveFiscalYearFailed
 )

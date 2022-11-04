@@ -93,6 +93,13 @@ type ComplexityRoot struct {
 		RefreshToken  func(childComplexity int) int
 	}
 
+	FiscalYear struct {
+		Closed    func(childComplexity int) int
+		EndDate   func(childComplexity int) int
+		ID        func(childComplexity int) int
+		StartDate func(childComplexity int) int
+	}
+
 	GeneralLedgerPreference struct {
 		Account   func(childComplexity int) int
 		AccountID func(childComplexity int) int
@@ -114,6 +121,7 @@ type ComplexityRoot struct {
 		StoreAccount                   func(childComplexity int, input model.WriteAccountInput) int
 		StoreAccountClass              func(childComplexity int, input model.WriteAccountClassInput) int
 		StoreAccountGroup              func(childComplexity int, input model.WriteAccountGroupInput) int
+		StoreFiscalYear                func(childComplexity int, input model.WriteFiscalYearInput) int
 		StoreTransactions              func(childComplexity int, input []*model.WriteTransactionsInput) int
 		StoreUom                       func(childComplexity int, input model.WriteUomInput) int
 		UpdateAccountByID              func(childComplexity int, id int, input model.WriteAccountInput) int
@@ -182,6 +190,7 @@ type MutationResolver interface {
 	DeleteAccountByID(ctx context.Context, id int) (int, error)
 	StoreTransactions(ctx context.Context, input []*model.WriteTransactionsInput) (*model.Journal, error)
 	UpdateGeneralLedgerPreferences(ctx context.Context, input []*model.WriteGeneralLedgerPreferenceInput) ([]*model.GeneralLedgerPreference, error)
+	StoreFiscalYear(ctx context.Context, input model.WriteFiscalYearInput) (*model.FiscalYear, error)
 	SignIn(ctx context.Context, input model.SignInInput) (*model.Credential, error)
 	RefreshCredential(ctx context.Context, input string) (*model.Credential, error)
 	StoreUom(ctx context.Context, input model.WriteUomInput) (*model.Uom, error)
@@ -390,6 +399,34 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Credential.RefreshToken(childComplexity), true
 
+	case "FiscalYear.closed":
+		if e.complexity.FiscalYear.Closed == nil {
+			break
+		}
+
+		return e.complexity.FiscalYear.Closed(childComplexity), true
+
+	case "FiscalYear.endDate":
+		if e.complexity.FiscalYear.EndDate == nil {
+			break
+		}
+
+		return e.complexity.FiscalYear.EndDate(childComplexity), true
+
+	case "FiscalYear.id":
+		if e.complexity.FiscalYear.ID == nil {
+			break
+		}
+
+		return e.complexity.FiscalYear.ID(childComplexity), true
+
+	case "FiscalYear.startDate":
+		if e.complexity.FiscalYear.StartDate == nil {
+			break
+		}
+
+		return e.complexity.FiscalYear.StartDate(childComplexity), true
+
 	case "GeneralLedgerPreference.account":
 		if e.complexity.GeneralLedgerPreference.Account == nil {
 			break
@@ -527,6 +564,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.StoreAccountGroup(childComplexity, args["input"].(model.WriteAccountGroupInput)), true
+
+	case "Mutation.storeFiscalYear":
+		if e.complexity.Mutation.StoreFiscalYear == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_storeFiscalYear_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.StoreFiscalYear(childComplexity, args["input"].(model.WriteFiscalYearInput)), true
 
 	case "Mutation.storeTransactions":
 		if e.complexity.Mutation.StoreTransactions == nil {
@@ -804,6 +853,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputWriteAccountClassInput,
 		ec.unmarshalInputWriteAccountGroupInput,
 		ec.unmarshalInputWriteAccountInput,
+		ec.unmarshalInputWriteFiscalYearInput,
 		ec.unmarshalInputWriteGeneralLedgerPreferenceInput,
 		ec.unmarshalInputWriteTransactionsInput,
 		ec.unmarshalInputWriteUomInput,
@@ -899,6 +949,14 @@ extend type Mutation {
     storeTransactions(input: [WriteTransactionsInput!]!): Journal! @authenticated
 
     updateGeneralLedgerPreferences(input: [WriteGeneralLedgerPreferenceInput!]!): [GeneralLedgerPreference!]! @authenticated
+
+    storeFiscalYear(input: WriteFiscalYearInput!): FiscalYear! @authenticated
+}
+
+input WriteFiscalYearInput {
+    startDate: Time!,
+    endDate: Time!,
+    closed: Boolean
 }
 
 input GeneralLedgerPreferenceInput {
@@ -997,6 +1055,13 @@ type GeneralLedgerPreference {
     id: ID!
     accountID: ID!
     account: Account
+}
+
+type FiscalYear {
+    id: ID!
+    startDate: Time!
+    endDate: Time!
+    closed: Boolean!
 }
 `, BuiltIn: false},
 	{Name: "../auth.graphqls", Input: `extend type Mutation {
@@ -1185,6 +1250,21 @@ func (ec *executionContext) field_Mutation_storeAccount_args(ctx context.Context
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 		arg0, err = ec.unmarshalNWriteAccountInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐWriteAccountInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_storeFiscalYear_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.WriteFiscalYearInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNWriteFiscalYearInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐWriteFiscalYearInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -2673,6 +2753,182 @@ func (ec *executionContext) fieldContext_Credential_refreshExpire(ctx context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _FiscalYear_id(ctx context.Context, field graphql.CollectedField, obj *model.FiscalYear) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FiscalYear_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalNID2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FiscalYear_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FiscalYear",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FiscalYear_startDate(ctx context.Context, field graphql.CollectedField, obj *model.FiscalYear) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FiscalYear_startDate(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StartDate, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FiscalYear_startDate(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FiscalYear",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FiscalYear_endDate(ctx context.Context, field graphql.CollectedField, obj *model.FiscalYear) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FiscalYear_endDate(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EndDate, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FiscalYear_endDate(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FiscalYear",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FiscalYear_closed(ctx context.Context, field graphql.CollectedField, obj *model.FiscalYear) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FiscalYear_closed(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Closed, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FiscalYear_closed(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FiscalYear",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _GeneralLedgerPreference_id(ctx context.Context, field graphql.CollectedField, obj *model.GeneralLedgerPreference) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_GeneralLedgerPreference_id(ctx, field)
 	if err != nil {
@@ -3865,6 +4121,91 @@ func (ec *executionContext) fieldContext_Mutation_updateGeneralLedgerPreferences
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_updateGeneralLedgerPreferences_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_storeFiscalYear(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_storeFiscalYear(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutation().StoreFiscalYear(rctx, fc.Args["input"].(model.WriteFiscalYearInput))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.Authenticated == nil {
+				return nil, errors.New("directive authenticated is not implemented")
+			}
+			return ec.directives.Authenticated(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.FiscalYear); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/QuickAmethyst/monosvc/graph/model.FiscalYear`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.FiscalYear)
+	fc.Result = res
+	return ec.marshalNFiscalYear2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐFiscalYear(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_storeFiscalYear(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_FiscalYear_id(ctx, field)
+			case "startDate":
+				return ec.fieldContext_FiscalYear_startDate(ctx, field)
+			case "endDate":
+				return ec.fieldContext_FiscalYear_endDate(ctx, field)
+			case "closed":
+				return ec.fieldContext_FiscalYear_closed(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FiscalYear", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_storeFiscalYear_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -7705,6 +8046,50 @@ func (ec *executionContext) unmarshalInputWriteAccountInput(ctx context.Context,
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputWriteFiscalYearInput(ctx context.Context, obj interface{}) (model.WriteFiscalYearInput, error) {
+	var it model.WriteFiscalYearInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"startDate", "endDate", "closed"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "startDate":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("startDate"))
+			it.StartDate, err = ec.unmarshalNTime2timeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "endDate":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("endDate"))
+			it.EndDate, err = ec.unmarshalNTime2timeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "closed":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("closed"))
+			it.Closed, err = ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputWriteGeneralLedgerPreferenceInput(ctx context.Context, obj interface{}) (model.WriteGeneralLedgerPreferenceInput, error) {
 	var it model.WriteGeneralLedgerPreferenceInput
 	asMap := map[string]interface{}{}
@@ -8183,6 +8568,55 @@ func (ec *executionContext) _Credential(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var fiscalYearImplementors = []string{"FiscalYear"}
+
+func (ec *executionContext) _FiscalYear(ctx context.Context, sel ast.SelectionSet, obj *model.FiscalYear) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, fiscalYearImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FiscalYear")
+		case "id":
+
+			out.Values[i] = ec._FiscalYear_id(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "startDate":
+
+			out.Values[i] = ec._FiscalYear_startDate(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "endDate":
+
+			out.Values[i] = ec._FiscalYear_endDate(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "closed":
+
+			out.Values[i] = ec._FiscalYear_closed(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var generalLedgerPreferenceImplementors = []string{"GeneralLedgerPreference"}
 
 func (ec *executionContext) _GeneralLedgerPreference(ctx context.Context, sel ast.SelectionSet, obj *model.GeneralLedgerPreference) graphql.Marshaler {
@@ -8390,6 +8824,15 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateGeneralLedgerPreferences(ctx, field)
+			})
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "storeFiscalYear":
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_storeFiscalYear(ctx, field)
 			})
 
 			if out.Values[i] == graphql.Null {
@@ -9447,6 +9890,20 @@ func (ec *executionContext) marshalNCredential2ᚖgithubᚗcomᚋQuickAmethyst�
 	return ec._Credential(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNFiscalYear2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐFiscalYear(ctx context.Context, sel ast.SelectionSet, v model.FiscalYear) graphql.Marshaler {
+	return ec._FiscalYear(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNFiscalYear2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐFiscalYear(ctx context.Context, sel ast.SelectionSet, v *model.FiscalYear) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FiscalYear(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v interface{}) (float64, error) {
 	res, err := graphql.UnmarshalFloatContext(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -9734,6 +10191,11 @@ func (ec *executionContext) unmarshalNWriteAccountGroupInput2githubᚗcomᚋQuic
 
 func (ec *executionContext) unmarshalNWriteAccountInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐWriteAccountInput(ctx context.Context, v interface{}) (model.WriteAccountInput, error) {
 	res, err := ec.unmarshalInputWriteAccountInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNWriteFiscalYearInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐWriteFiscalYearInput(ctx context.Context, v interface{}) (model.WriteFiscalYearInput, error) {
+	res, err := ec.unmarshalInputWriteFiscalYearInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 

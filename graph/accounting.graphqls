@@ -30,6 +30,14 @@ extend type Mutation {
     storeTransactions(input: [WriteTransactionsInput!]!): Journal! @authenticated
 
     updateGeneralLedgerPreferences(input: [WriteGeneralLedgerPreferenceInput!]!): [GeneralLedgerPreference!]! @authenticated
+
+    storeFiscalYear(input: WriteFiscalYearInput!): FiscalYear! @authenticated
+}
+
+input WriteFiscalYearInput {
+    startDate: Time!,
+    endDate: Time!,
+    closed: Boolean
 }
 
 input GeneralLedgerPreferenceInput {
@@ -128,4 +136,11 @@ type GeneralLedgerPreference {
     id: ID!
     accountID: ID!
     account: Account
+}
+
+type FiscalYear {
+    id: ID!
+    startDate: Time!
+    endDate: Time!
+    closed: Boolean!
 }
