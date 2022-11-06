@@ -67,24 +67,18 @@ func (c *Condition) buildScope(field FieldStrategy, value interface{}) (query st
 		return
 	}
 
-	if field.IsGreaterThanEqualStatement() {
-		switch value.(type) {
-		default:
-			err = fmt.Errorf("statement %s value must be a number or date", field)
-			return
-		case int, int8, int32, int64, uint, uint8, uint32, uint64, float32, float64:
-			query += fmt.Sprintf("%s >= ?", field.ColumnName())
-			return
+	if field.IsGreaterThanEqualStatement() || field.IsLessThanEqualStatement() {
+		symbol := ">="
+		if field.IsLessThanEqualStatement() {
+			symbol = "<="
 		}
-	}
 
-	if field.IsLessThanEqualStatement() {
 		switch value.(type) {
 		default:
 			err = fmt.Errorf("statement %s value must be a number or date", field)
 			return
 		case int, int8, int32, int64, uint, uint8, uint32, uint64, float32, float64, time.Time:
-			query += fmt.Sprintf("%s <= ?", field.ColumnName())
+			query += fmt.Sprintf("%s %s ?", field.ColumnName(), symbol)
 			return
 		}
 	}

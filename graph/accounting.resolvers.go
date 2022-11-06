@@ -12,6 +12,7 @@ import (
 	"github.com/QuickAmethyst/monosvc/stdlibgo/appcontext"
 	libErr "github.com/QuickAmethyst/monosvc/stdlibgo/errors"
 	sdkGraphql "github.com/QuickAmethyst/monosvc/stdlibgo/graphql"
+	qb "github.com/QuickAmethyst/monosvc/stdlibgo/querybuilder/sql"
 )
 
 // Group is the resolver for the group field.
@@ -388,11 +389,11 @@ func (r *queryResolver) AccountClass(ctx context.Context, input model.AccountCla
 
 // AccountClassTypes is the resolver for the accountClassTypes field.
 func (r *queryResolver) AccountClassTypes(ctx context.Context) (*model.AccountClassTypesResult, error) {
-	result := make([]*model.AccountClassType, 0)
+	result := make([]model.AccountClassType, 0)
 	classTypes := r.AccountingUsecase.GetAllAccountTypes(ctx)
 
 	for _, classType := range classTypes {
-		result = append(result, &model.AccountClassType{
+		result = append(result, model.AccountClassType{
 			ID:   classType.ID,
 			Name: classType.Name,
 		})
@@ -525,6 +526,45 @@ func (r *queryResolver) GeneralLedgerPreferences(ctx context.Context, input *mod
 	}
 
 	return result, nil
+}
+
+// FiscalYears is the resolver for the fiscalYears field.
+func (r *queryResolver) FiscalYears(ctx context.Context, input *model.FiscalYearsInput) (*model.FiscalYearsResult, error) {
+	var (
+		paging qb.Paging
+	)
+
+	if input != nil {
+		paging = qb.Paging{
+			CurrentPage: input.Paging.CurrentPage,
+			PageSize:    input.Paging.PageSize,
+		}
+	}
+
+	fiscalYears, paging, err := r.AccountingUsecase.GetFiscalYearList(ctx, sql.FiscalYearStatement{}, paging)
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on get fiscal year list", libErr.GetCode(err))
+	}
+
+	resultData := make([]model.FiscalYear, len(fiscalYears))
+	for i, fiscalYear := range fiscalYears {
+		resultData[i] = model.FiscalYear{
+			ID:        fiscalYear.ID,
+			StartDate: fiscalYear.StartDate,
+			EndDate:   fiscalYear.EndDate,
+			Closed:    fiscalYear.Closed,
+		}
+	}
+
+	return &model.FiscalYearsResult{
+		Data: resultData,
+		Paging: model.Paging{
+			CurrentPage: paging.CurrentPage,
+			PageSize:    paging.PageSize,
+			Total:       paging.Total,
+		},
+	}, nil
 }
 
 // Account returns generated.AccountResolver implementation.

@@ -35,7 +35,7 @@ type AccountClassType struct {
 }
 
 type AccountClassesInput struct {
-	Paging *PagingInput `json:"paging"`
+	Paging PagingInput `json:"paging"`
 }
 
 type AccountClassTypeInput struct {
@@ -43,7 +43,7 @@ type AccountClassTypeInput struct {
 }
 
 type AccountClassTypesResult struct {
-	Data []*AccountClassType `json:"data"`
+	Data []AccountClassType `json:"data"`
 }
 
 type AccountGroup struct {
@@ -57,22 +57,17 @@ type AccountGroup struct {
 type WriteAccountGroupInput struct {
 	Name     string `json:"name"`
 	ClassID  int64  `json:"classID"`
-	ParentID *int64 `json:"parentID"`
-	Inactive *bool  `json:"inactive"`
+	ParentID int64  `json:"parentID"`
+	Inactive bool   `json:"inactive"`
 }
 
 func (w *WriteAccountGroupInput) Domain() (accountGroup domain.AccountGroup, err error) {
 	accountGroup.Name = w.Name
 	accountGroup.ClassID = w.ClassID
+	accountGroup.Inactive = w.Inactive
 
-	if w.ParentID != nil {
-		if err = accountGroup.ParentID.Scan(*w.ParentID); err != nil {
-			return
-		}
-	}
-
-	if w.Inactive != nil {
-		accountGroup.Inactive = *w.Inactive
+	if err = accountGroup.ParentID.Scan(w.ParentID); err != nil {
+		return
 	}
 
 	return
@@ -93,17 +88,13 @@ type Account struct {
 type WriteAccountInput struct {
 	Name     string `json:"name"`
 	GroupID  int64  `json:"groupID"`
-	Inactive *bool  `json:"inactive"`
+	Inactive bool   `json:"inactive"`
 }
 
 func (w *WriteAccountInput) Domain() (account domain.Account) {
 	account.Name = w.Name
 	account.GroupID = w.GroupID
-
-	if w.Inactive != nil {
-		account.Inactive = *w.Inactive
-	}
-
+	account.Inactive = w.Inactive
 	return
 }
 
@@ -146,7 +137,7 @@ type GeneralLedgerPreferenceInput struct {
 }
 
 type FiscalYear struct {
-	ID        int64    `json:"id"`
+	ID        int64     `json:"id"`
 	StartDate time.Time `json:"startDate"`
 	EndDate   time.Time `json:"endDate"`
 	Closed    bool      `json:"closed"`
@@ -155,7 +146,7 @@ type FiscalYear struct {
 type WriteFiscalYearInput struct {
 	StartDate time.Time `json:"startDate"`
 	EndDate   time.Time `json:"endDate"`
-	Closed    bool     `json:"closed"`
+	Closed    bool      `json:"closed"`
 }
 
 func (w *WriteFiscalYearInput) Domain() (fiscalYear domain.FiscalYear) {
@@ -163,4 +154,13 @@ func (w *WriteFiscalYearInput) Domain() (fiscalYear domain.FiscalYear) {
 	fiscalYear.EndDate = w.EndDate
 	fiscalYear.Closed = w.Closed
 	return
+}
+
+type FiscalYearsInput struct {
+	Paging PagingInput `json:"paging"`
+}
+
+type FiscalYearsResult struct {
+	Data   []FiscalYear `json:"data"`
+	Paging Paging      `json:"paging"`
 }

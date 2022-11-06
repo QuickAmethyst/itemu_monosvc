@@ -69,13 +69,13 @@ func (r *reader) GetFiscalYearList(ctx context.Context, stmt FiscalYearStatement
 	paging.Normalize()
 
 	fromClause := "FROM fiscal_years"
-	limitClause, limitClauseArgs := p.BuildQuery()
+	limitClause, limitClauseArgs := paging.BuildQuery()
 	whereClause, whereClauseArgs, err := qb.NewWhereClause(stmt)
 	if err != nil {
 		err = errors.PropagateWithCode(err, EcodeGetFiscalYearListFailed, "Failed on select fiscal year")
 		return
 	}
-
+	fmt.Println("HELO", fromClause, whereClause, limitClause, append(whereClauseArgs, limitClauseArgs...))
 	selectQuery := fmt.Sprintf("SELECT id, start_date, end_date, closed %s %s %s", fromClause, whereClause, limitClause)
 	countQuery := fmt.Sprintf("SELECT COUNT(*) %s %s", fromClause, whereClause)
 

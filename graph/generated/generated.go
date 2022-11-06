@@ -100,6 +100,11 @@ type ComplexityRoot struct {
 		StartDate func(childComplexity int) int
 	}
 
+	FiscalYearsResult struct {
+		Data   func(childComplexity int) int
+		Paging func(childComplexity int) int
+	}
+
 	GeneralLedgerPreference struct {
 		Account   func(childComplexity int) int
 		AccountID func(childComplexity int) int
@@ -146,6 +151,7 @@ type ComplexityRoot struct {
 		AccountGroup             func(childComplexity int, input model.AccountGroupInput) int
 		AccountGroups            func(childComplexity int, input *model.AccountGroupInput) int
 		Accounts                 func(childComplexity int, input *model.AccountInput) int
+		FiscalYears              func(childComplexity int, input *model.FiscalYearsInput) int
 		GeneralLedgerPreferences func(childComplexity int, input *model.GeneralLedgerPreferenceInput) int
 		Uoms                     func(childComplexity int, input *model.UomsInput) int
 	}
@@ -206,6 +212,7 @@ type QueryResolver interface {
 	Accounts(ctx context.Context, input *model.AccountInput) ([]*model.Account, error)
 	Account(ctx context.Context, input model.AccountInput) (*model.Account, error)
 	GeneralLedgerPreferences(ctx context.Context, input *model.GeneralLedgerPreferenceInput) ([]*model.GeneralLedgerPreference, error)
+	FiscalYears(ctx context.Context, input *model.FiscalYearsInput) (*model.FiscalYearsResult, error)
 	Uoms(ctx context.Context, input *model.UomsInput) (*model.UomsResult, error)
 }
 
@@ -426,6 +433,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.FiscalYear.StartDate(childComplexity), true
+
+	case "FiscalYearsResult.data":
+		if e.complexity.FiscalYearsResult.Data == nil {
+			break
+		}
+
+		return e.complexity.FiscalYearsResult.Data(childComplexity), true
+
+	case "FiscalYearsResult.paging":
+		if e.complexity.FiscalYearsResult.Paging == nil {
+			break
+		}
+
+		return e.complexity.FiscalYearsResult.Paging(childComplexity), true
 
 	case "GeneralLedgerPreference.account":
 		if e.complexity.GeneralLedgerPreference.Account == nil {
@@ -768,6 +789,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Accounts(childComplexity, args["input"].(*model.AccountInput)), true
 
+	case "Query.fiscalYears":
+		if e.complexity.Query.FiscalYears == nil {
+			break
+		}
+
+		args, err := ec.field_Query_fiscalYears_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.FiscalYears(childComplexity, args["input"].(*model.FiscalYearsInput)), true
+
 	case "Query.generalLedgerPreferences":
 		if e.complexity.Query.GeneralLedgerPreferences == nil {
 			break
@@ -846,6 +879,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputAccountClassTypeInput,
 		ec.unmarshalInputAccountGroupInput,
 		ec.unmarshalInputAccountInput,
+		ec.unmarshalInputFiscalYearsInput,
 		ec.unmarshalInputGeneralLedgerPreferenceInput,
 		ec.unmarshalInputPagingInput,
 		ec.unmarshalInputSignInInput,
@@ -931,6 +965,8 @@ var sources = []*ast.Source{
     account(input: AccountInput!): Account! @authenticated
 
     generalLedgerPreferences(input: GeneralLedgerPreferenceInput): [GeneralLedgerPreference!]! @authenticated
+
+    fiscalYears(input: FiscalYearsInput): FiscalYearsResult!
 }
 
 extend type Mutation {
@@ -951,6 +987,10 @@ extend type Mutation {
     updateGeneralLedgerPreferences(input: [WriteGeneralLedgerPreferenceInput!]!): [GeneralLedgerPreference!]! @authenticated
 
     storeFiscalYear(input: WriteFiscalYearInput!): FiscalYear! @authenticated
+}
+
+input FiscalYearsInput {
+    paging: PagingInput
 }
 
 input WriteFiscalYearInput {
@@ -1062,6 +1102,11 @@ type FiscalYear {
     startDate: Time!
     endDate: Time!
     closed: Boolean!
+}
+
+type FiscalYearsResult {
+    data: [FiscalYear!]!
+    paging: Paging!
 }
 `, BuiltIn: false},
 	{Name: "../auth.graphqls", Input: `extend type Mutation {
@@ -1511,6 +1556,21 @@ func (ec *executionContext) field_Query_accounts_args(ctx context.Context, rawAr
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 		arg0, err = ec.unmarshalOAccountInput2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_fiscalYears_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *model.FiscalYearsInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalOFiscalYearsInput2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐFiscalYearsInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -2159,9 +2219,9 @@ func (ec *executionContext) _AccountClassTypesResult_data(ctx context.Context, f
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.AccountClassType)
+	res := resTmp.([]model.AccountClassType)
 	fc.Result = res
-	return ec.marshalNAccountClassType2ᚕᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassTypeᚄ(ctx, field.Selections, res)
+	return ec.marshalNAccountClassType2ᚕgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassTypeᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_AccountClassTypesResult_data(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -2924,6 +2984,112 @@ func (ec *executionContext) fieldContext_FiscalYear_closed(ctx context.Context, 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FiscalYearsResult_data(ctx context.Context, field graphql.CollectedField, obj *model.FiscalYearsResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FiscalYearsResult_data(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Data, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.FiscalYear)
+	fc.Result = res
+	return ec.marshalNFiscalYear2ᚕgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐFiscalYearᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FiscalYearsResult_data(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FiscalYearsResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_FiscalYear_id(ctx, field)
+			case "startDate":
+				return ec.fieldContext_FiscalYear_startDate(ctx, field)
+			case "endDate":
+				return ec.fieldContext_FiscalYear_endDate(ctx, field)
+			case "closed":
+				return ec.fieldContext_FiscalYear_closed(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FiscalYear", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FiscalYearsResult_paging(ctx context.Context, field graphql.CollectedField, obj *model.FiscalYearsResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FiscalYearsResult_paging(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Paging, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.Paging)
+	fc.Result = res
+	return ec.marshalNPaging2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐPaging(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_FiscalYearsResult_paging(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FiscalYearsResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "currentPage":
+				return ec.fieldContext_Paging_currentPage(ctx, field)
+			case "pageSize":
+				return ec.fieldContext_Paging_pageSize(ctx, field)
+			case "total":
+				return ec.fieldContext_Paging_total(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Paging", field.Name)
 		},
 	}
 	return fc, nil
@@ -5399,6 +5565,67 @@ func (ec *executionContext) fieldContext_Query_generalLedgerPreferences(ctx cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_fiscalYears(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_fiscalYears(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().FiscalYears(rctx, fc.Args["input"].(*model.FiscalYearsInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.FiscalYearsResult)
+	fc.Result = res
+	return ec.marshalNFiscalYearsResult2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐFiscalYearsResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_fiscalYears(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "data":
+				return ec.fieldContext_FiscalYearsResult_data(ctx, field)
+			case "paging":
+				return ec.fieldContext_FiscalYearsResult_paging(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FiscalYearsResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_fiscalYears_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_uoms(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_uoms(ctx, field)
 	if err != nil {
@@ -7778,6 +8005,34 @@ func (ec *executionContext) unmarshalInputAccountInput(ctx context.Context, obj 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputFiscalYearsInput(ctx context.Context, obj interface{}) (model.FiscalYearsInput, error) {
+	var it model.FiscalYearsInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"paging"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "paging":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("paging"))
+			it.Paging, err = ec.unmarshalOPagingInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐPagingInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputGeneralLedgerPreferenceInput(ctx context.Context, obj interface{}) (model.GeneralLedgerPreferenceInput, error) {
 	var it model.GeneralLedgerPreferenceInput
 	asMap := map[string]interface{}{}
@@ -7984,7 +8239,7 @@ func (ec *executionContext) unmarshalInputWriteAccountGroupInput(ctx context.Con
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parentID"))
-			it.ParentID, err = ec.unmarshalOInt2ᚖint64(ctx, v)
+			it.ParentID, err = ec.unmarshalOInt2int64(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -7992,7 +8247,7 @@ func (ec *executionContext) unmarshalInputWriteAccountGroupInput(ctx context.Con
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("inactive"))
-			it.Inactive, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			it.Inactive, err = ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -8036,7 +8291,7 @@ func (ec *executionContext) unmarshalInputWriteAccountInput(ctx context.Context,
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("inactive"))
-			it.Inactive, err = ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			it.Inactive, err = ec.unmarshalOBoolean2bool(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -8617,6 +8872,41 @@ func (ec *executionContext) _FiscalYear(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var fiscalYearsResultImplementors = []string{"FiscalYearsResult"}
+
+func (ec *executionContext) _FiscalYearsResult(ctx context.Context, sel ast.SelectionSet, obj *model.FiscalYearsResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, fiscalYearsResultImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FiscalYearsResult")
+		case "data":
+
+			out.Values[i] = ec._FiscalYearsResult_data(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "paging":
+
+			out.Values[i] = ec._FiscalYearsResult_paging(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var generalLedgerPreferenceImplementors = []string{"GeneralLedgerPreference"}
 
 func (ec *executionContext) _GeneralLedgerPreference(ctx context.Context, sel ast.SelectionSet, obj *model.GeneralLedgerPreference) graphql.Marshaler {
@@ -9140,6 +9430,29 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_generalLedgerPreferences(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
+		case "fiscalYears":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_fiscalYears(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -9720,7 +10033,7 @@ func (ec *executionContext) marshalNAccountClassType2githubᚗcomᚋQuickAmethys
 	return ec._AccountClassType(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNAccountClassType2ᚕᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassTypeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.AccountClassType) graphql.Marshaler {
+func (ec *executionContext) marshalNAccountClassType2ᚕgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassTypeᚄ(ctx context.Context, sel ast.SelectionSet, v []model.AccountClassType) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -9744,7 +10057,7 @@ func (ec *executionContext) marshalNAccountClassType2ᚕᚖgithubᚗcomᚋQuickA
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNAccountClassType2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassType(ctx, sel, v[i])
+			ret[i] = ec.marshalNAccountClassType2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassType(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -9894,6 +10207,50 @@ func (ec *executionContext) marshalNFiscalYear2githubᚗcomᚋQuickAmethystᚋmo
 	return ec._FiscalYear(ctx, sel, &v)
 }
 
+func (ec *executionContext) marshalNFiscalYear2ᚕgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐFiscalYearᚄ(ctx context.Context, sel ast.SelectionSet, v []model.FiscalYear) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNFiscalYear2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐFiscalYear(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalNFiscalYear2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐFiscalYear(ctx context.Context, sel ast.SelectionSet, v *model.FiscalYear) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -9902,6 +10259,20 @@ func (ec *executionContext) marshalNFiscalYear2ᚖgithubᚗcomᚋQuickAmethyst�
 		return graphql.Null
 	}
 	return ec._FiscalYear(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNFiscalYearsResult2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐFiscalYearsResult(ctx context.Context, sel ast.SelectionSet, v model.FiscalYearsResult) graphql.Marshaler {
+	return ec._FiscalYearsResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNFiscalYearsResult2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐFiscalYearsResult(ctx context.Context, sel ast.SelectionSet, v *model.FiscalYearsResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FiscalYearsResult(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v interface{}) (float64, error) {
@@ -10045,6 +10416,10 @@ func (ec *executionContext) marshalNJournal2ᚖgithubᚗcomᚋQuickAmethystᚋmo
 		return graphql.Null
 	}
 	return ec._Journal(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPaging2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐPaging(ctx context.Context, sel ast.SelectionSet, v model.Paging) graphql.Marshaler {
+	return ec._Paging(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNPaging2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐPaging(ctx context.Context, sel ast.SelectionSet, v *model.Paging) graphql.Marshaler {
@@ -10571,6 +10946,14 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
+func (ec *executionContext) unmarshalOFiscalYearsInput2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐFiscalYearsInput(ctx context.Context, v interface{}) (*model.FiscalYearsInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputFiscalYearsInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalOGeneralLedgerPreferenceInput2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐGeneralLedgerPreferenceInput(ctx context.Context, v interface{}) (*model.GeneralLedgerPreferenceInput, error) {
 	if v == nil {
 		return nil, nil
@@ -10619,20 +11002,9 @@ func (ec *executionContext) marshalOInt2int64(ctx context.Context, sel ast.Selec
 	return res
 }
 
-func (ec *executionContext) unmarshalOInt2ᚖint64(ctx context.Context, v interface{}) (*int64, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := graphql.UnmarshalInt64(v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOInt2ᚖint64(ctx context.Context, sel ast.SelectionSet, v *int64) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	res := graphql.MarshalInt64(*v)
-	return res
+func (ec *executionContext) unmarshalOPagingInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐPagingInput(ctx context.Context, v interface{}) (model.PagingInput, error) {
+	res, err := ec.unmarshalInputPagingInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOPagingInput2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐPagingInput(ctx context.Context, v interface{}) (*model.PagingInput, error) {

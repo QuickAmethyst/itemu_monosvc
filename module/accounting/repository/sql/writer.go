@@ -48,7 +48,6 @@ func (w *writer) StoreFiscalYear(ctx context.Context, fiscalYear *domain.FiscalY
 		return
 	}
 
-
 	args := []interface{}{fiscalYear.StartDate, fiscalYear.StartDate, fiscalYear.EndDate, fiscalYear.EndDate}
 	query := `
 		SELECT id, start_date, end_date, closed
@@ -56,7 +55,7 @@ func (w *writer) StoreFiscalYear(ctx context.Context, fiscalYear *domain.FiscalY
 		WHERE (start_date <= ? AND end_date >= ?) OR (start_date >= ? AND end_date <= ?)
 	`
 
-	err = w.db.GetContext(ctx, &intersectedFiscalYear, query, args...)
+	err = w.db.GetContext(ctx, &intersectedFiscalYear, w.db.Rebind(query), args...)
 	if err != nil && err != sql.ErrNoRows {
 		err = errors.PropagateWithCode(err, EcodeStoreFiscalYearFailed, "Store fiscal year failed")
 		return

@@ -12,6 +12,8 @@ extend type Query {
     account(input: AccountInput!): Account! @authenticated
 
     generalLedgerPreferences(input: GeneralLedgerPreferenceInput): [GeneralLedgerPreference!]! @authenticated
+
+    fiscalYears(input: FiscalYearsInput): FiscalYearsResult!
 }
 
 extend type Mutation {
@@ -32,6 +34,10 @@ extend type Mutation {
     updateGeneralLedgerPreferences(input: [WriteGeneralLedgerPreferenceInput!]!): [GeneralLedgerPreference!]! @authenticated
 
     storeFiscalYear(input: WriteFiscalYearInput!): FiscalYear! @authenticated
+}
+
+input FiscalYearsInput {
+    paging: PagingInput
 }
 
 input WriteFiscalYearInput {
@@ -143,4 +149,9 @@ type FiscalYear {
     startDate: Time!
     endDate: Time!
     closed: Boolean!
+}
+
+type FiscalYearsResult {
+    data: [FiscalYear!]!
+    paging: Paging!
 }
