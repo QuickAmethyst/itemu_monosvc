@@ -32,12 +32,22 @@ type Writer interface {
 	UpdateGeneralLedgerPreferences(ctx context.Context, preferences []domain.GeneralLedgerPreference) (err error)
 
 	StoreFiscalYear(ctx context.Context, fiscalYear *domain.FiscalYear) (err error)
+	UpdateFiscalYearByID(ctx context.Context, id int64, fiscalYear *domain.FiscalYear) (err error)
 }
 
 type writer struct {
 	logger logger.Logger
 	db     sql.DB
 	reader Reader
+}
+
+func (w *writer) UpdateFiscalYearByID(ctx context.Context, id int64, fiscalYear *domain.FiscalYear) (err error) {
+	if _, err = w.db.Updates(ctx, "fiscal_years", fiscalYear, &FiscalYearStatement{ID: id}); err != nil {
+		err = errors.PropagateWithCode(err, EcodeUpdateFiscalYearFailed, "Update fiscal year failed")
+		return
+	}
+
+	return
 }
 
 func (w *writer) StoreFiscalYear(ctx context.Context, fiscalYear *domain.FiscalYear) (err error) {
