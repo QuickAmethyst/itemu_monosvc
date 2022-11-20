@@ -19,9 +19,7 @@ const (
 	EcodeGetAllAccountsFailed
 	EcodeGetAccountFailed
 	EcodeStoreJournalFailed
-	EcodeBeginTxFailed
-	EcodeRollbackTxFailed
-	EcodeCloseRowsFailed
+	EcodeStoreTransactionFailed
 	EcodeStoreTransactionAtJournalFailed
 	EcodeStoreTransactionAtGeneralLedgerFailed
 	EcodeStoreTransactionCreatedByRequired
@@ -35,4 +33,8 @@ const (
 	EcodeGetFiscalYearFailed
 	EcodeGetActiveFiscalYearFailed
 	EcodeUpdateFiscalYearFailed
+	EcodeCloseFiscalYearFailed
+	EcodeGetBalanceSheetAmountFailed
+	EcodeStoreTransactionProhibited
+	EcodeGetGeneralLedgerPreferenceFailed
 )

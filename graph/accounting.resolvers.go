@@ -5,6 +5,7 @@ package graph
 
 import (
 	"context"
+
 	"github.com/QuickAmethyst/monosvc/graph/generated"
 	"github.com/QuickAmethyst/monosvc/graph/model"
 	"github.com/QuickAmethyst/monosvc/module/accounting/domain"
@@ -271,19 +272,23 @@ func (r *mutationResolver) DeleteAccountByID(ctx context.Context, id int) (int, 
 	return id, nil
 }
 
-// StoreTransactions is the resolver for the storeTransactions field.
-func (r *mutationResolver) StoreTransactions(ctx context.Context, input []*model.WriteTransactionsInput) (*model.Journal, error) {
+// StoreTransaction is the resolver for the storeTransaction field.
+func (r *mutationResolver) StoreTransaction(ctx context.Context, input model.WriteTransactionInput) (*model.Journal, error) {
 	userID := appcontext.GetUserID(ctx)
 
-	transactions := make([]sql.Transaction, len(input))
-	for _, item := range input {
-		transactions = append(transactions, sql.Transaction{
+	transactions := make([]sql.TransactionRow, len(input.Data))
+	for _, item := range input.Data {
+		transactions = append(transactions, sql.TransactionRow{
 			AccountID: item.AccountID,
 			Amount:    item.Amount,
 		})
 	}
 
-	journal, err := r.AccountingUsecase.StoreTransactions(ctx, userID, transactions)
+	journal, err := r.AccountingUsecase.StoreTransaction(ctx, userID, sql.Transaction{
+		Date: input.TransDate,
+		Data: transactions,
+	})
+
 	if err != nil {
 		r.Logger.Error(err.Error())
 		return nil, sdkGraphql.NewError(err, "Failed on create transactions", libErr.GetCode(err))
@@ -296,6 +301,7 @@ func (r *mutationResolver) StoreTransactions(ctx context.Context, input []*model
 	return &model.Journal{
 		ID:        journal.ID.String(),
 		Amount:    journal.Amount,
+		TransDate: journal.TransDate,
 		CreatedAt: journal.CreatedAt,
 	}, nil
 }
@@ -345,6 +351,17 @@ func (r *mutationResolver) StoreFiscalYear(ctx context.Context, input model.Writ
 		EndDate:   fiscalYear.EndDate,
 		Closed:    fiscalYear.Closed,
 	}, nil
+}
+
+// CloseFiscalYear is the resolver for the closeFiscalYear field.
+func (r *mutationResolver) CloseFiscalYear(ctx context.Context, id int) (int, error) {
+	userID := appcontext.GetUserID(ctx)
+	if err := r.AccountingUsecase.CloseFiscalYear(ctx, int64(id), userID); err != nil {
+		r.Logger.Error(err.Error())
+		return id, sdkGraphql.NewError(err, "Failed on close fiscal year", libErr.GetCode(err))
+	}
+
+	return id, nil
 }
 
 // AccountClasses is the resolver for the accountClasses field.

@@ -26,13 +26,14 @@ type Writer interface {
 	UpdateAccountByID(ctx context.Context, id int64, account *domain.Account) (err error)
 	DeleteAccountByID(ctx context.Context, id int64) (err error)
 
-	StoreTransactions(ctx context.Context, userID uuid.UUID, transactions []Transaction) (journal *domain.Journal, err error)
+	StoreTransaction(ctx context.Context, userID uuid.UUID, transactions Transaction) (journal *domain.Journal, err error)
+	StoreTransactionTx(tx sql.Tx, ctx context.Context, userID uuid.UUID, transaction Transaction) (journal *domain.Journal, err error)
 
 	UpdateGeneralLedgerPreferenceByID(ctx context.Context, id int64, preference *domain.GeneralLedgerPreference) (err error)
 	UpdateGeneralLedgerPreferences(ctx context.Context, preferences []domain.GeneralLedgerPreference) (err error)
 
 	StoreFiscalYear(ctx context.Context, fiscalYear *domain.FiscalYear) (err error)
-	UpdateFiscalYearByID(ctx context.Context, id int64, fiscalYear *domain.FiscalYear) (err error)
+	CloseFiscalYear(ctx context.Context, id int64, userID uuid.UUID) (err error)
 }
 
 type writer struct {
@@ -41,10 +42,90 @@ type writer struct {
 	reader Reader
 }
 
-func (w *writer) UpdateFiscalYearByID(ctx context.Context, id int64, fiscalYear *domain.FiscalYear) (err error) {
-	if _, err = w.db.Updates(ctx, "fiscal_years", fiscalYear, &FiscalYearStatement{ID: id}); err != nil {
+func (w *writer) CloseFiscalYear(ctx context.Context, id int64, userID uuid.UUID) (err error) {
+	// check if retained earnings account is valid
+	retainedEarningsGLP, err := w.reader.GetGeneralLedgerPreferenceByID(ctx, GeneralLedgerPreferenceStatement{ID: int64(RetainedEarnings)})
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetGeneralLedgerPreferenceFailed, "Failed on get general ledger preference")
+		return
+	}
+
+	if err = w.reader.ValidatePreferences(ctx, []domain.GeneralLedgerPreference{retainedEarningsGLP}); err != nil {
+		err = errors.PropagateWithCode(err, EcodeCloseFiscalYearFailed, "Validate general ledger preferences failed")
+		return
+	}
+
+	// check if close fiscal year is allowed
+	activeFiscalYear, err := w.reader.GetActiveFiscalYear(ctx)
+	if err != nil && err != sql.ErrNoRows {
+		err = errors.PropagateWithCode(err, EcodeCloseFiscalYearFailed, "Failed on get active fiscal year")
+		return
+	}
+
+	if err != sql.ErrNoRows && activeFiscalYear.ID != id {
+		err = errors.PropagateWithCode(fmt.Errorf("close fiscal year prohibited"), EcodeCloseFiscalYearFailed, "Cannot close fiscal year while there are open fiscal years before")
+		return
+	}
+
+	// get balance amount
+	balance, err := w.reader.GetBalanceSheetAmount(ctx, activeFiscalYear.StartDate, activeFiscalYear.EndDate)
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetBalanceSheetAmountFailed, "Failed on get balance sheet amount")
+		return
+	}
+
+	err = w.db.Transaction(ctx, nil, func(tx sql.Tx) error {
+		_, err = w.StoreTransactionTx(tx, ctx, userID, Transaction{
+			Data: []TransactionRow{
+				{retainedEarningsGLP.AccountID.Int64, -balance},
+			},
+		})
+
+		if err != nil {
+			err = errors.PropagateWithCode(err, EcodeStoreTransactionFailed, "Failed on store transaction")
+			return err
+		}
+
+		activeFiscalYear.Closed = true
+		if err = w.updateFiscalYearByIDTx(tx, ctx, id, &activeFiscalYear); err != nil {
+			err = errors.PropagateWithCode(err, EcodeCloseFiscalYearFailed, "Update fiscal year failed")
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeCloseFiscalYearFailed, "Failed on close fiscal year")
+		return
+	}
+
+	return
+}
+
+func (w *writer) updateFiscalYearByIDTx(tx sql.Tx, ctx context.Context, id int64, fiscalYear *domain.FiscalYear) (err error) {
+	if _, err = tx.Updates(ctx, "fiscal_years", fiscalYear, &FiscalYearStatement{ID: id}); err != nil {
 		err = errors.PropagateWithCode(err, EcodeUpdateFiscalYearFailed, "Update fiscal year failed")
 		return
+	}
+
+	return
+}
+
+func (w *writer) updateFiscalYearByID(ctx context.Context, id int64, fiscalYear *domain.FiscalYear) (err error) {
+	err = w.db.Transaction(ctx, nil, func(tx sql.Tx) error {
+		err = w.updateFiscalYearByIDTx(tx, ctx, id, fiscalYear)
+		if err != nil {
+			err = errors.PropagateWithCode(err, EcodeUpdateFiscalYearFailed, "Update fiscal year failed")
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeUpdateFiscalYearFailed, "Update fiscal year failed")
+		return err
 	}
 
 	return
@@ -93,9 +174,9 @@ func (w *writer) UpdateGeneralLedgerPreferences(ctx context.Context, preferences
 		return
 	}
 
-	err = w.db.Transaction(ctx, nil, func(tx *sql.Tx) error {
+	err = w.db.Transaction(ctx, nil, func(tx sql.Tx) error {
 		for _, preference := range preferences {
-			err = w.mustUpdateGeneralLedgerPreferenceByID(ctx, preference.ID, &preference)
+			err = w.mustUpdateGeneralLedgerPreferenceByIDTx(tx, ctx, preference.ID, &preference)
 			if err != nil {
 				err = errors.PropagateWithCode(err, EcodeUpdateGeneralLedgerPreferenceFailed, "Update general ledger preferences failed")
 				return err
@@ -104,6 +185,10 @@ func (w *writer) UpdateGeneralLedgerPreferences(ctx context.Context, preferences
 
 		return nil
 	})
+
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeUpdateGeneralLedgerPreferenceFailed, "Failed on update general ledger preferences")
+	}
 
 	return
 }
@@ -126,8 +211,8 @@ func (w *writer) UpdateGeneralLedgerPreferenceByID(ctx context.Context, id int64
 	return
 }
 
-func (w *writer) mustUpdateGeneralLedgerPreferenceByID(ctx context.Context, id int64, preference *domain.GeneralLedgerPreference) (err error) {
-	if _, err = w.db.Updates(ctx, "general_ledger_preferences", preference, &GeneralLedgerPreferenceStatement{ID: id}); err != nil {
+func (w *writer) mustUpdateGeneralLedgerPreferenceByIDTx(tx sql.Tx, ctx context.Context, id int64, preference *domain.GeneralLedgerPreference) (err error) {
+	if _, err = tx.Updates(ctx, "general_ledger_preferences", preference, &GeneralLedgerPreferenceStatement{ID: id}); err != nil {
 		err = errors.PropagateWithCode(goErr.New("update general ledger preference by id failed"), EcodeUpdateGeneralLedgerPreferenceFailed, "creator unknown")
 		return
 	}
@@ -135,7 +220,26 @@ func (w *writer) mustUpdateGeneralLedgerPreferenceByID(ctx context.Context, id i
 	return
 }
 
-func (w *writer) StoreTransactions(ctx context.Context, userID uuid.UUID, transactions []Transaction) (journal *domain.Journal, err error) {
+func (w *writer) mustUpdateGeneralLedgerPreferenceByID(ctx context.Context, id int64, preference *domain.GeneralLedgerPreference) (err error) {
+	err = w.db.Transaction(ctx, nil, func(tx sql.Tx) error {
+		err = w.mustUpdateGeneralLedgerPreferenceByIDTx(tx, ctx, id, preference)
+		if err != nil {
+			err = errors.PropagateWithCode(err, EcodeUpdateGeneralLedgerPreferenceFailed, "Failed on update general ledger preference")
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeUpdateGeneralLedgerPreferenceFailed, "Failed on commit")
+		return
+	}
+
+	return
+}
+
+func (w *writer) StoreTransactionTx(tx sql.Tx, ctx context.Context, userID uuid.UUID, transaction Transaction) (journal *domain.Journal, err error) {
 	var (
 		gls           []domain.GeneralLedger
 		journalAmount float64
@@ -150,22 +254,43 @@ func (w *writer) StoreTransactions(ctx context.Context, userID uuid.UUID, transa
 	now := time.Now()
 	journalID := uuid.New()
 
-	for _, transaction := range transactions {
-		if transaction.Amount == 0 {
+	if transaction.Date.IsZero() {
+		transaction.Date = now
+	}
+
+	// startDate <= transDate <= endDate
+	_, err = w.reader.GetFiscalYear(ctx, FiscalYearStatement{
+		StartDateLTE: transaction.Date,
+		EndDateGTE:   transaction.Date,
+		ClosedNotEQ:  true,
+	})
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			err = errors.PropagateWithCode(err, EcodeStoreTransactionProhibited, "No active fiscal year for transaction date")
+			return
+		}
+
+		err = errors.PropagateWithCode(err, EcodeGetFiscalYearFailed, "Failed on get fiscal year")
+		return
+	}
+
+	for _, row := range transaction.Data {
+		if row.Amount == 0 {
 			continue
 		}
 
 		gls = append(gls, domain.GeneralLedger{
 			ID:        uuid.New(),
 			JournalID: journalID,
-			AccountID: transaction.AccountID,
+			AccountID: row.AccountID,
 			CreatedBy: userID,
-			Amount:    transaction.Amount,
+			Amount:    row.Amount,
 		})
 
-		balanceAmount += transaction.Amount
-		if transaction.Amount > 0 {
-			journalAmount += transaction.Amount
+		balanceAmount += row.Amount
+		if row.Amount > 0 {
+			journalAmount += row.Amount
 		}
 	}
 
@@ -183,32 +308,50 @@ func (w *writer) StoreTransactions(ctx context.Context, userID uuid.UUID, transa
 	journal = &domain.Journal{
 		ID:        journalID,
 		Amount:    journalAmount,
+		TransDate: transaction.Date,
 		CreatedAt: now,
 	}
 
-	err = w.db.Transaction(ctx, nil, func(tx *sql.Tx) error {
-		err = w.StoreJournalTx(tx, ctx, journal)
+	if err = w.StoreJournalTx(tx, ctx, journal); err != nil {
+		err = errors.PropagateWithCode(err, EcodeStoreTransactionAtJournalFailed, "Store transaction failed")
+		return
+	}
 
-		if err != nil {
-			err = errors.PropagateWithCode(err, EcodeStoreTransactionAtJournalFailed, "Store transaction failed")
-			return err
-		}
+	if err = w.StoreGeneralLedgersTx(tx, ctx, gls); err != nil {
+		err = errors.PropagateWithCode(err, EcodeStoreTransactionAtGeneralLedgerFailed, "Store transaction failed")
+		return
+	}
 
-		err = w.StoreGeneralLedgersTx(tx, ctx, gls)
+	return
+}
+
+func (w *writer) StoreTransaction(ctx context.Context, userID uuid.UUID, transaction Transaction) (journal *domain.Journal, err error) {
+	err = w.db.Transaction(ctx, nil, func(tx sql.Tx) error {
+		journal, err = w.StoreTransactionTx(tx, ctx, userID, transaction)
 		if err != nil {
-			err = errors.PropagateWithCode(err, EcodeStoreTransactionAtGeneralLedgerFailed, "Store transaction failed")
 			return err
 		}
 
 		return nil
 	})
 
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeStoreTransactionFailed, "Failed on store transaction")
+		return
+	}
+
 	return
 }
 
-func (w *writer) StoreJournalTx(tx *sql.Tx, ctx context.Context, journal *domain.Journal) (err error) {
-	query := "INSERT INTO journals (id, amount, created_at) VALUES ($1, $2, $3) RETURNING id"
-	err = tx.QueryRowContext(ctx, query, journal.ID, journal.Amount, journal.CreatedAt).Scan(&journal.ID)
+func (w *writer) StoreJournalTx(tx sql.Tx, ctx context.Context, journal *domain.Journal) (err error) {
+	now := time.Now()
+
+	if journal.TransDate.IsZero() {
+		journal.TransDate = now
+	}
+
+	query := "INSERT INTO journals (id, amount, trans_date) VALUES (?, ?, ?) RETURNING id"
+	err = tx.QueryRowContext(ctx, query, journal.ID, journal.Amount, journal.TransDate, journal.CreatedAt).Scan(&journal.ID)
 
 	if err != nil {
 		err = errors.PropagateWithCode(err, EcodeStoreJournalFailed, "Store journal failed")
@@ -218,7 +361,7 @@ func (w *writer) StoreJournalTx(tx *sql.Tx, ctx context.Context, journal *domain
 	return
 }
 
-func (w *writer) StoreGeneralLedgersTx(tx *sql.Tx, ctx context.Context, gls []domain.GeneralLedger) (err error) {
+func (w *writer) StoreGeneralLedgersTx(tx sql.Tx, ctx context.Context, gls []domain.GeneralLedger) (err error) {
 	var params []interface{}
 
 	query := `Insert INTO general_ledgers (id, journal_id, account_id, amount, created_by) VALUES `

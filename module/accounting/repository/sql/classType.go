@@ -21,5 +21,5 @@ var classTypes = map[int64]domain.AccountClassType{
 }
 
 func IsBalanceSheetAccount(classType int64) bool {
-	return classType >= EquityClassType
+	return classType > 0 && classType <= EquityClassType
 }

@@ -20,15 +20,20 @@ type Writer interface {
 	UpdateAccountByID(ctx context.Context, id int64, account *domain.Account) (err error)
 	DeleteAccountByID(ctx context.Context, id int64) (err error)
 
-	StoreTransactions(ctx context.Context, userID uuid.UUID, transactions []sql.Transaction) (journal *domain.Journal, err error)
+	StoreTransaction(ctx context.Context, userID uuid.UUID, transaction sql.Transaction) (journal *domain.Journal, err error)
 
 	UpdateGeneralLedgerPreferences(ctx context.Context, preferences []domain.GeneralLedgerPreference) (err error)
 
 	StoreFiscalYear(ctx context.Context, fiscalYear *domain.FiscalYear) (err error)
+	CloseFiscalYear(ctx context.Context, id int64, userID uuid.UUID) (err error)
 }
 
 type writer struct {
 	AccountingSQL sql.SQL
+}
+
+func (w *writer) CloseFiscalYear(ctx context.Context, id int64, userID uuid.UUID) (err error) {
+	return w.AccountingSQL.CloseFiscalYear(ctx, id, userID)
 }
 
 func (w *writer) StoreFiscalYear(ctx context.Context, fiscalYear *domain.FiscalYear) (err error) {
@@ -39,8 +44,8 @@ func (w *writer) UpdateGeneralLedgerPreferences(ctx context.Context, preferences
 	return w.AccountingSQL.UpdateGeneralLedgerPreferences(ctx, preferences)
 }
 
-func (w *writer) StoreTransactions(ctx context.Context, userID uuid.UUID, transactions []sql.Transaction) (journal *domain.Journal, err error) {
-	return w.AccountingSQL.StoreTransactions(ctx, userID, transactions)
+func (w *writer) StoreTransaction(ctx context.Context, userID uuid.UUID, transaction sql.Transaction) (journal *domain.Journal, err error) {
+	return w.AccountingSQL.StoreTransaction(ctx, userID, transaction)
 }
 
 func (w *writer) StoreAccount(ctx context.Context, account *domain.Account) (err error) {

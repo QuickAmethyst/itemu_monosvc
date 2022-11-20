@@ -10,7 +10,6 @@ import (
 )
 
 type Result = sql.Result
-type Tx = sqlx.Tx
 type TxOptions = sql.TxOptions
 
 const (
@@ -24,28 +23,36 @@ const (
 	LevelLinearizable    = sql.LevelLinearizable
 )
 
-type DB interface {
-	Stats() sql.DBStats
-	Close() error
+type shareable interface {
+	Updates(ctx context.Context, tableName string, dest interface{}, whereStruct interface{}) (sql.Result, error)
+	Delete(ctx context.Context, tableName string, whereStruct interface{}) (sql.Result, error)
+}
+
+type builtin interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	Rebind(query string) string
 	SelectContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 	QueryContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
 	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sqlx.Row
-	PrepareContext(ctx context.Context, query string) (*sqlx.Stmt, error)
-	Rebind(query string) string
 	GetContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
+}
+
+type DB interface {
+	builtin
+	shareable
+	Stats() sql.DBStats
+	Close() error
+	PrepareContext(ctx context.Context, query string) (*sqlx.Stmt, error)
 	PingContext(ctx context.Context) error
-	BeginTx(ctx context.Context, opts *TxOptions) (*Tx, error)
-	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-	Updates(ctx context.Context, tableName string, dest interface{}, where interface{}) (sql.Result, error)
-	Delete(ctx context.Context, tableName string, whereStruct interface{}) (sql.Result, error)
-	Transaction(ctx context.Context, opts *TxOptions, txFn func(*Tx) error) (err error)
+	BeginTx(ctx context.Context, opts *TxOptions) (Tx, error)
+	Transaction(ctx context.Context, opts *TxOptions, txFn func(Tx) error) (err error)
 }
 
 type db struct {
 	db *sqlx.DB
 }
 
-func (d *db) Transaction(ctx context.Context, opts *TxOptions, txFn func(*Tx) error) (err error) {
+func (d *db) Transaction(ctx context.Context, opts *TxOptions, txFn func(Tx) error) (err error) {
 	tx, err := d.BeginTx(ctx, opts)
 	if err != nil {
 		return
@@ -84,47 +91,20 @@ func (d *db) Delete(ctx context.Context, tableName string, whereStruct interface
 }
 
 func (d *db) Updates(ctx context.Context, tableName string, dest interface{}, whereStruct interface{}) (result sql.Result, err error) {
-	var (
-		whereClause, setClause         string
-		whereClauseArgs, setClauseArgs []interface{}
-	)
-
-	err = utils.ForIn(dest, func(key interface{}, value interface{}) error {
-		columnValue := value
-		columnName := qb.ColumnName(key.(string))
-
-		if setClause == "" {
-			setClause += fmt.Sprintf("SET %s = ?", columnName)
-		} else {
-			setClause += fmt.Sprintf(", %s = ?", columnName)
-		}
-
-		setClauseArgs = append(setClauseArgs, columnValue)
-
-		return nil
-	})
-
-	whereClause, whereClauseArgs, err = qb.NewWhereClause(whereStruct)
-	if err != nil {
-		if err == qb.ErrStmtNil {
-			err = ErrWhereStructNil
-		}
-
-		return
-	}
-
-	query := fmt.Sprintf("UPDATE %s %s %s", tableName, setClause, whereClause)
-	args := append(setClauseArgs, whereClauseArgs...)
-
-	return d.ExecContext(ctx, d.Rebind(query), args...)
+	return Updates(ctx, d, tableName, dest, whereStruct)
 }
 
 func (d *db) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	return d.db.ExecContext(ctx, query, args...)
 }
 
-func (d *db) BeginTx(ctx context.Context, opts *TxOptions) (*Tx, error) {
-	return d.db.BeginTxx(ctx, opts)
+func (d *db) BeginTx(ctx context.Context, opts *TxOptions) (Tx, error) {
+	tx, err := d.db.BeginTxx(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewTx(tx), nil
 }
 
 func (d *db) GetContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
@@ -165,4 +145,40 @@ func (d *db) SelectContext(ctx context.Context, dest interface{}, query string, 
 
 func NewDB(i *sqlx.DB) DB {
 	return &db{i}
+}
+
+func Updates(ctx context.Context, db builtin, tableName string, dest interface{}, whereStruct interface{}) (result sql.Result, err error) {
+	var (
+		whereClause, setClause         string
+		whereClauseArgs, setClauseArgs []interface{}
+	)
+
+	err = utils.ForIn(dest, func(key interface{}, value interface{}) error {
+		columnValue := value
+		columnName := qb.ColumnName(key.(string))
+
+		if setClause == "" {
+			setClause += fmt.Sprintf("SET %s = ?", columnName)
+		} else {
+			setClause += fmt.Sprintf(", %s = ?", columnName)
+		}
+
+		setClauseArgs = append(setClauseArgs, columnValue)
+
+		return nil
+	})
+
+	whereClause, whereClauseArgs, err = qb.NewWhereClause(whereStruct)
+	if err != nil {
+		if err == qb.ErrStmtNil {
+			err = ErrWhereStructNil
+		}
+
+		return
+	}
+
+	query := fmt.Sprintf("UPDATE %s %s %s", tableName, setClause, whereClause)
+	args := append(setClauseArgs, whereClauseArgs...)
+
+	return db.ExecContext(ctx, db.Rebind(query), args...)
 }

@@ -29,11 +29,12 @@ extend type Mutation {
     updateAccountByID(id: Int!, input: WriteAccountInput!): Account! @authenticated
     deleteAccountByID(id: Int!): Int! @authenticated
 
-    storeTransactions(input: [WriteTransactionsInput!]!): Journal! @authenticated
+    storeTransaction(input: WriteTransactionInput!): Journal! @authenticated
 
     updateGeneralLedgerPreferences(input: [WriteGeneralLedgerPreferenceInput!]!): [GeneralLedgerPreference!]! @authenticated
 
     storeFiscalYear(input: WriteFiscalYearInput!): FiscalYear! @authenticated
+    closeFiscalYear(id: Int!): Int! @authenticated
 }
 
 input FiscalYearsInput {
@@ -55,9 +56,14 @@ input WriteGeneralLedgerPreferenceInput {
     accountID: ID!
 }
 
-input WriteTransactionsInput {
+input WriteTransactionRow {
     accountID: Int!
     amount: Float!
+}
+
+input WriteTransactionInput {
+    transDate: Time
+    data: [WriteTransactionRow!]!
 }
 
 input AccountInput {
@@ -135,6 +141,7 @@ type Account {
 type Journal {
     id: ID!
     amount: Float!
+    transDate: Time!
     createdAt: Time!
 }
 

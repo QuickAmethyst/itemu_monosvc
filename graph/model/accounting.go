@@ -105,12 +105,18 @@ type AccountInput struct {
 type Journal struct {
 	ID        string    `json:"id"`
 	Amount    float64   `json:"amount"`
+	TransDate time.Time `json:"transDate"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-type WriteTransactionsInput struct {
+type WriteTransactionRow struct {
 	AccountID int64   `json:"accountID"`
 	Amount    float64 `json:"amount"`
+}
+
+type WriteTransactionInput struct {
+	TransDate time.Time             `json:"transDate"`
+	Data      []WriteTransactionRow `json:"data"`
 }
 
 type GeneralLedgerPreference struct {
@@ -162,5 +168,5 @@ type FiscalYearsInput struct {
 
 type FiscalYearsResult struct {
 	Data   []FiscalYear `json:"data"`
-	Paging Paging      `json:"paging"`
+	Paging Paging       `json:"paging"`
 }

@@ -1,6 +1,13 @@
 package sql
 
-type Transaction struct {
+import "time"
+
+type TransactionRow struct {
 	AccountID int64
 	Amount    float64
+}
+
+type Transaction struct {
+	Date time.Time
+	Data []TransactionRow
 }

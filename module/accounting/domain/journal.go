@@ -8,5 +8,6 @@ import (
 type Journal struct {
 	ID        uuid.UUID
 	Amount    float64
+	TransDate time.Time
 	CreatedAt time.Time
 }

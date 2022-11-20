@@ -7,6 +7,7 @@ import (
 	"github.com/QuickAmethyst/monosvc/stdlibgo/errors"
 	qb "github.com/QuickAmethyst/monosvc/stdlibgo/querybuilder/sql"
 	"github.com/QuickAmethyst/monosvc/stdlibgo/sql"
+	"time"
 )
 
 type Reader interface {
@@ -27,14 +28,33 @@ type Reader interface {
 
 	ValidatePreferences(ctx context.Context, preferences []domain.GeneralLedgerPreference) (err error)
 	GetAllGeneralLedgerPreferences(ctx context.Context, stmt GeneralLedgerPreferenceStatement) (preferences []domain.GeneralLedgerPreference, err error)
+	GetGeneralLedgerPreferenceByID(ctx context.Context, stmt GeneralLedgerPreferenceStatement) (preference domain.GeneralLedgerPreference, err error)
 
 	GetFiscalYearList(ctx context.Context, stmt FiscalYearStatement, p qb.Paging) (result []domain.FiscalYear, paging qb.Paging, err error)
 	GetFiscalYear(ctx context.Context, stmt FiscalYearStatement) (fiscalYear domain.FiscalYear, err error)
 	GetActiveFiscalYear(ctx context.Context) (fiscalYear domain.FiscalYear, err error)
+
+	GetBalanceSheetAmount(ctx context.Context, startDate time.Time, endDate time.Time) (amount float64, err error)
 }
 
 type reader struct {
 	db sql.DB
+}
+
+func (r *reader) GetGeneralLedgerPreferenceByID(ctx context.Context, stmt GeneralLedgerPreferenceStatement) (preference domain.GeneralLedgerPreference, err error) {
+	whereClause, whereClauseArgs, err := qb.NewWhereClause(stmt)
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetAllGeneralLedgerPreferencesFailed, "Failed on get general ledger preference")
+		return
+	}
+
+	query := fmt.Sprintf("SELECT id, account_id FROM general_ledger_preferences %s", whereClause)
+	if err = r.db.GetContext(ctx, &preference, r.db.Rebind(query), whereClauseArgs...); err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetAllGeneralLedgerPreferencesFailed, "Failed on get general ledger preference")
+		return
+	}
+
+	return
 }
 
 func (r *reader) GetFiscalYear(ctx context.Context, statement FiscalYearStatement) (fiscalYear domain.FiscalYear, err error) {
@@ -44,9 +64,9 @@ func (r *reader) GetFiscalYear(ctx context.Context, statement FiscalYearStatemen
 		return
 	}
 
-	query := fmt.Sprintf("SELECT id, start_date, end_date, closed FROM fiscal_years %s", whereClause)
+	query := fmt.Sprintf("SELECT id, start_date, end_date, closed FROM fiscal_years %s ORDER BY id ASC", whereClause)
 	if err = r.db.GetContext(ctx, &fiscalYear, r.db.Rebind(query), whereClauseArgs...); err != nil {
-		err = errors.PropagateWithCode(err, EcodeGetFiscalYearFailed, "Failed on get fiscal year failed")
+		err = errors.PropagateWithCode(err, EcodeGetFiscalYearFailed, "Failed on get fiscal year")
 		return
 	}
 
@@ -54,8 +74,15 @@ func (r *reader) GetFiscalYear(ctx context.Context, statement FiscalYearStatemen
 }
 
 func (r *reader) GetActiveFiscalYear(ctx context.Context) (fiscalYear domain.FiscalYear, err error) {
-	fiscalYear, err = r.GetFiscalYear(ctx, FiscalYearStatement{ClosedNotEQ: true})
-	if err != nil {
+	query := `
+		SELECT id, start_date, end_date, closed
+		FROM fiscal_years
+		WHERE closed = FALSE
+		ORDER BY id ASC, start_date ASC, end_date ASC
+		LIMIT 1
+	`
+
+	if err = r.db.GetContext(ctx, &fiscalYear, r.db.Rebind(query)); err != nil {
 		err = errors.PropagateWithCode(err, EcodeGetActiveFiscalYearFailed, "Failed on get active fiscal year")
 		return
 	}
@@ -75,7 +102,7 @@ func (r *reader) GetFiscalYearList(ctx context.Context, stmt FiscalYearStatement
 		err = errors.PropagateWithCode(err, EcodeGetFiscalYearListFailed, "Failed on select fiscal year")
 		return
 	}
-	fmt.Println("HELO", fromClause, whereClause, limitClause, append(whereClauseArgs, limitClauseArgs...))
+
 	selectQuery := fmt.Sprintf("SELECT id, start_date, end_date, closed %s %s %s", fromClause, whereClause, limitClause)
 	countQuery := fmt.Sprintf("SELECT COUNT(*) %s %s", fromClause, whereClause)
 
@@ -260,6 +287,7 @@ func (r *reader) ValidatePreferences(ctx context.Context, preferences []domain.G
 			accounts.group_id = account_groups.id AND account_groups.class_id = account_classes.id AND
 			accounts.id = ?
 	`
+
 	for _, preference := range preferences {
 		var accountClass domain.AccountClass
 		field := fmt.Sprintf("%d", preference.ID)
@@ -285,6 +313,28 @@ func (r *reader) ValidatePreferences(ctx context.Context, preferences []domain.G
 	}
 
 	return errors.ValidationErrors(fieldErrors)
+}
+
+func (r *reader) GetBalanceSheetAmount(ctx context.Context, startDate time.Time, endDate time.Time) (amount float64, err error) {
+	query := `
+		SELECT SUM(gl.amount)
+		FROM general_ledgers gl, journals j, accounts acc, account_groups accGrp, account_classes accCls
+		WHERE
+			gl.journal_id = j.id AND
+			gl.account_id = acc.id AND
+			acc.group_id = accGrp.id AND
+			accGrp.class_id = accCls.id AND
+			accCls.type_id > 0 AND accCls.type_id <= ? AND
+			j.trans_date >= ? AND
+			j.trans_date <= ?
+	`
+
+	if err = r.db.GetContext(ctx, &amount, r.db.Rebind(query), EquityClassType, startDate, endDate); err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetBalanceSheetAmountFailed, "Failed on get balance sheet amount")
+		return
+	}
+
+	return
 }
 
 func NewReader(opt *Options) Reader {
