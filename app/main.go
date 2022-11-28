@@ -134,7 +134,10 @@ func initGraph() {
 	rest = http.New(http.Options{Cors: &conf.HttpCors})
 	graphqlH, playgroundH := sdkGraphql.New(graphES, sdkGraphql.Options{Development: conf.Development})
 
-	rest.Handle(http.MethodGet, "/graphql", playgroundH)
+	if conf.Development {
+		rest.Handle(http.MethodGet, "/graphql", playgroundH)
+	}
+
 	rest.Handle(http.MethodPost, "/graphql/query", graphqlH)
 }
 

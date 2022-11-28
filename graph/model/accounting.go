@@ -66,8 +66,11 @@ func (w *WriteAccountGroupInput) Domain() (accountGroup domain.AccountGroup, err
 	accountGroup.ClassID = w.ClassID
 	accountGroup.Inactive = w.Inactive
 
-	if err = accountGroup.ParentID.Scan(w.ParentID); err != nil {
-		return
+	if w.ParentID > 0 {
+		err = accountGroup.ParentID.Scan(w.ParentID)
+		if err != nil {
+			return
+		}
 	}
 
 	return

@@ -14,6 +14,7 @@ build:
 		-X main.BuildVersion=${BUILD_VERSION} \
 		-X main.CommitHash=${COMMIT_HASH}" \
 		-race -o ./build/app ./app
+
 coverage:
 	go test ${TEST_PATH} -covermode=count -coverpkg=./... -coverprofile=coverage.out -failfast -timeout 900s
 

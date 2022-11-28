@@ -74,7 +74,7 @@ AccountingDatabase:
     ssl: false
 
 HttpServer:
-  address: "localhost:8000"
+  address: ":8000"
   readHeaderTimeout: 1s
   readTimeout: 2s
   writeTimeout: 5500ms
