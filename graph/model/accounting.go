@@ -57,7 +57,7 @@ type AccountGroup struct {
 type WriteAccountGroupInput struct {
 	Name     string `json:"name"`
 	ClassID  int64  `json:"classID"`
-	ParentID int64  `json:"parentID"`
+	ParentID *int64  `json:"parentID"`
 	Inactive bool   `json:"inactive"`
 }
 
@@ -66,7 +66,7 @@ func (w *WriteAccountGroupInput) Domain() (accountGroup domain.AccountGroup, err
 	accountGroup.ClassID = w.ClassID
 	accountGroup.Inactive = w.Inactive
 
-	if w.ParentID > 0 {
+	if w.ParentID != nil && *w.ParentID > 0 {
 		err = accountGroup.ParentID.Scan(w.ParentID)
 		if err != nil {
 			return
