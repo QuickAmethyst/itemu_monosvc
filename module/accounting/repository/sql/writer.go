@@ -449,18 +449,14 @@ func (w *writer) StoreAccountGroup(ctx context.Context, accountGroup *domain.Acc
 }
 
 func (w *writer) UpdateAccountGroupByID(ctx context.Context, id int64, accountGroup *domain.AccountGroup) (err error) {
-	_, err = w.updateAccountGroup(ctx, accountGroup, AccountGroupStatement{ID: id})
-	return
-}
-
-func (w *writer) updateAccountGroup(ctx context.Context, accountGroup *domain.AccountGroup, where AccountGroupStatement) (result sql.Result, err error) {
-	if accountGroup.ParentID.Valid && accountGroup.ID != 0 {
-		if accountGroup.ParentID.Int64 == accountGroup.ID {
+	if accountGroup.ParentID.Valid && accountGroup.ParentID.Int64 != 0 {
+		if accountGroup.ParentID.Int64 == id {
 			err = errors.PropagateWithCode(goErr.New("invalid parent id"), EcodeParentIDNotValid, "cannot set parent with the same account group")
 			return
 		}
 
-		parentAccountGroup, err := w.reader.GetAccountGroupByID(ctx, accountGroup.ParentID.Int64)
+		var parentAccountGroup domain.AccountGroup
+		parentAccountGroup, err = w.reader.GetAccountGroupByID(ctx, accountGroup.ParentID.Int64)
 		if err != nil {
 			err = errors.PropagateWithCode(err, errors.GetCode(err), "Failed on get parent account group")
 			return
@@ -469,7 +465,7 @@ func (w *writer) updateAccountGroup(ctx context.Context, accountGroup *domain.Ac
 		accountGroup.ClassID = parentAccountGroup.ClassID
 	}
 
-	whereClause, whereClauseArgs, err := qb.NewWhereClause(where)
+	whereClause, whereClauseArgs, err := qb.NewWhereClause(AccountClassStatement{ID: id})
 	if err != nil {
 		err = errors.PropagateWithCode(err, EcodeUpdateAccountGroupFailed, "Failed on select account group")
 		return
@@ -486,7 +482,7 @@ func (w *writer) updateAccountGroup(ctx context.Context, accountGroup *domain.Ac
 		whereClauseArgs...,
 	)
 
-	result, err = w.db.ExecContext(ctx, w.db.Rebind(updateQuery), args...)
+	_, err = w.db.ExecContext(ctx, w.db.Rebind(updateQuery), args...)
 	if err != nil {
 		err = errors.PropagateWithCode(err, EcodeUpdateAccountGroupFailed, "Update account group failed")
 		return
