@@ -459,6 +459,14 @@ func (w *writer) updateAccountGroup(ctx context.Context, accountGroup *domain.Ac
 			err = errors.PropagateWithCode(goErr.New("invalid parent id"), EcodeParentIDNotValid, "cannot set parent with the same account group")
 			return
 		}
+
+		parentAccountGroup, err := w.reader.GetAccountGroupByID(ctx, accountGroup.ParentID.Int64)
+		if err != nil {
+			err = errors.PropagateWithCode(err, errors.GetCode(err), "Failed on get parent account group")
+			return
+		}
+
+		accountGroup.ClassID = parentAccountGroup.ClassID
 	}
 
 	whereClause, whereClauseArgs, err := qb.NewWhereClause(where)
