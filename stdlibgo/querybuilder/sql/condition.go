@@ -62,6 +62,11 @@ func (c *Condition) BuildQuery() (query string, args []interface{}, err error) {
 func (c *Condition) buildScope(field FieldStrategy, value interface{}) (query string, arg interface{}, skipArg bool, err error) {
 	arg = value
 
+	if field.IsNotEqualStatement() {
+		query += fmt.Sprintf("%s != ?", field.ColumnName())
+		return
+	}
+
 	if field.IsLikeStatement() {
 		query += fmt.Sprintf("LOWER(%s) LIKE LOWER(?)", field.ColumnName())
 		return

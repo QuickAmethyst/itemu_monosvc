@@ -65,6 +65,7 @@ func (r *reader) GetFiscalYear(ctx context.Context, statement FiscalYearStatemen
 	}
 
 	query := fmt.Sprintf("SELECT id, start_date, end_date, closed FROM fiscal_years %s ORDER BY id ASC", whereClause)
+
 	if err = r.db.GetContext(ctx, &fiscalYear, r.db.Rebind(query), whereClauseArgs...); err != nil {
 		err = errors.PropagateWithCode(err, EcodeGetFiscalYearFailed, "Failed on get fiscal year")
 		return

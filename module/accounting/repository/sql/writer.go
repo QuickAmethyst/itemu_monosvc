@@ -336,7 +336,7 @@ func (w *writer) StoreTransaction(ctx context.Context, userID uuid.UUID, transac
 	})
 
 	if err != nil {
-		err = errors.PropagateWithCode(err, EcodeStoreTransactionFailed, "Failed on store transaction")
+		err = errors.PropagateWithCode(err, errors.GetCode(err), "Failed on store transaction")
 		return
 	}
 
@@ -351,7 +351,7 @@ func (w *writer) StoreJournalTx(tx sql.Tx, ctx context.Context, journal *domain.
 	}
 
 	query := "INSERT INTO journals (id, amount, trans_date) VALUES (?, ?, ?) RETURNING id"
-	err = tx.QueryRowContext(ctx, query, journal.ID, journal.Amount, journal.TransDate, journal.CreatedAt).Scan(&journal.ID)
+	err = tx.QueryRowContext(ctx, w.db.Rebind(query), journal.ID, journal.Amount, journal.TransDate).Scan(&journal.ID)
 
 	if err != nil {
 		err = errors.PropagateWithCode(err, EcodeStoreJournalFailed, "Store journal failed")
