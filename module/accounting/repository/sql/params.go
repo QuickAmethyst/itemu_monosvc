@@ -9,5 +9,6 @@ type TransactionRow struct {
 
 type Transaction struct {
 	Date time.Time
+	Memo string
 	Data []TransactionRow
 }

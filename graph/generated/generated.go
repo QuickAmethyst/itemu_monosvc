@@ -1039,6 +1039,7 @@ input WriteTransactionRow {
 
 input WriteTransactionInput {
     transDate: Time
+    memo: String
     data: [WriteTransactionRow!]!
 }
 
@@ -8554,7 +8555,7 @@ func (ec *executionContext) unmarshalInputWriteTransactionInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"transDate", "data"}
+	fieldsInOrder := [...]string{"transDate", "memo", "data"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -8566,6 +8567,14 @@ func (ec *executionContext) unmarshalInputWriteTransactionInput(ctx context.Cont
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("transDate"))
 			it.TransDate, err = ec.unmarshalOTime2timeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "memo":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("memo"))
+			it.Memo, err = ec.unmarshalOString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}

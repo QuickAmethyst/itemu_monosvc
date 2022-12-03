@@ -286,6 +286,7 @@ func (r *mutationResolver) StoreTransaction(ctx context.Context, input model.Wri
 
 	journal, err := r.AccountingUsecase.StoreTransaction(ctx, userID, sql.Transaction{
 		Date: input.TransDate,
+		Memo: input.Memo,
 		Data: transactions,
 	})
 

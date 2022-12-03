@@ -57,7 +57,7 @@ type AccountGroup struct {
 type WriteAccountGroupInput struct {
 	Name     string `json:"name"`
 	ClassID  int64  `json:"classID"`
-	ParentID *int64  `json:"parentID"`
+	ParentID *int64 `json:"parentID"`
 	Inactive bool   `json:"inactive"`
 }
 
@@ -119,6 +119,7 @@ type WriteTransactionRow struct {
 
 type WriteTransactionInput struct {
 	TransDate time.Time             `json:"transDate"`
+	Memo      string                `json:"memo"`
 	Data      []WriteTransactionRow `json:"data"`
 }
 

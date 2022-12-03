@@ -63,6 +63,7 @@ input WriteTransactionRow {
 
 input WriteTransactionInput {
     transDate: Time
+    memo: String
     data: [WriteTransactionRow!]!
 }
 

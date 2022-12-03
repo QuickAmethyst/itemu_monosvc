@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"database/sql"
 	"github.com/google/uuid"
 	"time"
 )
@@ -8,6 +9,7 @@ import (
 type Journal struct {
 	ID        uuid.UUID
 	Amount    float64
-	TransDate time.Time
 	CreatedAt time.Time
+	TransDate time.Time
+	Memo      sql.NullString
 }

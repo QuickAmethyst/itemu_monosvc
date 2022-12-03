@@ -2,6 +2,7 @@ package sql
 
 import (
 	"context"
+	goSql "database/sql"
 	goErr "errors"
 	"fmt"
 	"github.com/QuickAmethyst/monosvc/module/accounting/domain"
@@ -242,6 +243,7 @@ func (w *writer) mustUpdateGeneralLedgerPreferenceByID(ctx context.Context, id i
 func (w *writer) StoreTransactionTx(tx sql.Tx, ctx context.Context, userID uuid.UUID, transaction Transaction) (journal *domain.Journal, err error) {
 	var (
 		gls           []domain.GeneralLedger
+		memo          goSql.NullString
 		journalAmount float64
 		balanceAmount float64
 	)
@@ -253,6 +255,12 @@ func (w *writer) StoreTransactionTx(tx sql.Tx, ctx context.Context, userID uuid.
 
 	now := time.Now()
 	journalID := uuid.New()
+
+	if transaction.Memo != "" {
+		if err = memo.Scan(transaction.Memo); err != nil {
+			err = errors.PropagateWithCode(err, EcodeStoreTransactionFailed, "Failed on scan memo value")
+		}
+	}
 
 	if transaction.Date.IsZero() {
 		transaction.Date = now
@@ -309,6 +317,7 @@ func (w *writer) StoreTransactionTx(tx sql.Tx, ctx context.Context, userID uuid.
 		ID:        journalID,
 		Amount:    journalAmount,
 		TransDate: transaction.Date,
+		Memo:      memo,
 		CreatedAt: now,
 	}
 
@@ -350,8 +359,12 @@ func (w *writer) StoreJournalTx(tx sql.Tx, ctx context.Context, journal *domain.
 		journal.TransDate = now
 	}
 
-	query := "INSERT INTO journals (id, amount, trans_date) VALUES (?, ?, ?) RETURNING id"
-	err = tx.QueryRowContext(ctx, w.db.Rebind(query), journal.ID, journal.Amount, journal.TransDate).Scan(&journal.ID)
+	query := "INSERT INTO journals (id, amount, trans_date, memo) VALUES (?, ?, ?, ?) RETURNING id"
+	err = tx.QueryRowContext(
+		ctx,
+		w.db.Rebind(query),
+		journal.ID, journal.Amount, journal.TransDate, journal.Memo,
+	).Scan(&journal.ID)
 
 	if err != nil {
 		err = errors.PropagateWithCode(err, EcodeStoreJournalFailed, "Store journal failed")
