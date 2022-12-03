@@ -77,6 +77,7 @@ func (w *writer) CloseFiscalYear(ctx context.Context, id int64, userID uuid.UUID
 
 	err = w.db.Transaction(ctx, nil, func(tx sql.Tx) error {
 		_, err = w.StoreTransactionTx(tx, ctx, userID, Transaction{
+			Memo: "Close Fiscal Year",
 			Data: []TransactionRow{
 				{retainedEarningsGLP.AccountID.Int64, -balance},
 			},
@@ -259,6 +260,7 @@ func (w *writer) StoreTransactionTx(tx sql.Tx, ctx context.Context, userID uuid.
 	if transaction.Memo != "" {
 		if err = memo.Scan(transaction.Memo); err != nil {
 			err = errors.PropagateWithCode(err, EcodeStoreTransactionFailed, "Failed on scan memo value")
+			return
 		}
 	}
 
