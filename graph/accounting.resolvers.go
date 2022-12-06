@@ -5,7 +5,6 @@ package graph
 
 import (
 	"context"
-
 	"github.com/QuickAmethyst/monosvc/graph/generated"
 	"github.com/QuickAmethyst/monosvc/graph/model"
 	"github.com/QuickAmethyst/monosvc/module/accounting/domain"
@@ -335,6 +334,50 @@ func (r *mutationResolver) UpdateGeneralLedgerPreferences(ctx context.Context, i
 	}
 
 	return result, nil
+}
+
+// StoreBankAccount is the resolver for the storeBankAccount field.
+func (r *mutationResolver) StoreBankAccount(ctx context.Context, input model.WriteBankAccountInput) (*model.BankAccount, error) {
+	bankAccount, err := input.Domain()
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on store bank account", libErr.GetCode(err))
+	}
+
+	if err = r.AccountingUsecase.StoreBankAccount(ctx, &bankAccount); err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on store bank account", libErr.GetCode(err))
+	}
+
+	return &model.BankAccount{
+		ID:         bankAccount.ID,
+		AccountID:  bankAccount.AccountID,
+		Type:       bankAccount.Type,
+		BankNumber: bankAccount.BankNumber.String,
+		Inactive:   bankAccount.Inactive,
+	}, nil
+}
+
+// UpdateBankAccountByID is the resolver for the updateBankAccountByID field.
+func (r *mutationResolver) UpdateBankAccountByID(ctx context.Context, id int, input model.WriteBankAccountInput) (*model.BankAccount, error) {
+	bankAccount, err := input.Domain()
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on update bank account by id", libErr.GetCode(err))
+	}
+
+	if err = r.AccountingUsecase.UpdateBankAccountByID(ctx, int64(id), &bankAccount); err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on update bank account by id", libErr.GetCode(err))
+	}
+
+	return &model.BankAccount{
+		ID:         bankAccount.ID,
+		AccountID:  bankAccount.AccountID,
+		Type:       bankAccount.Type,
+		BankNumber: bankAccount.BankNumber.String,
+		Inactive:   bankAccount.Inactive,
+	}, nil
 }
 
 // StoreFiscalYear is the resolver for the storeFiscalYear field.

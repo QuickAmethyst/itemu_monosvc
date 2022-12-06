@@ -24,12 +24,23 @@ type Writer interface {
 
 	UpdateGeneralLedgerPreferences(ctx context.Context, preferences []domain.GeneralLedgerPreference) (err error)
 
+	StoreBankAccount(ctx context.Context, bankAccount *domain.BankAccount) (err error)
+	UpdateBankAccountByID(ctx context.Context, id int64, bankAccount *domain.BankAccount) (err error)
+
 	StoreFiscalYear(ctx context.Context, fiscalYear *domain.FiscalYear) (err error)
 	CloseFiscalYear(ctx context.Context, id int64, userID uuid.UUID) (err error)
 }
 
 type writer struct {
 	AccountingSQL sql.SQL
+}
+
+func (w *writer) StoreBankAccount(ctx context.Context, bankAccount *domain.BankAccount) (err error) {
+	return w.AccountingSQL.StoreBankAccount(ctx, bankAccount)
+}
+
+func (w *writer) UpdateBankAccountByID(ctx context.Context, id int64, bankAccount *domain.BankAccount) (err error) {
+	return w.AccountingSQL.UpdateBankAccountByID(ctx, id, bankAccount)
 }
 
 func (w *writer) CloseFiscalYear(ctx context.Context, id int64, userID uuid.UUID) (err error) {

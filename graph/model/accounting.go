@@ -174,3 +174,32 @@ type FiscalYearsResult struct {
 	Data   []FiscalYear `json:"data"`
 	Paging Paging       `json:"paging"`
 }
+
+type BankAccount struct {
+	ID         int64  `json:"id"`
+	AccountID  int64  `json:"accountID"`
+	Type       int64  `json:"type"`
+	BankNumber string `json:"BankNumber"`
+	Inactive   bool   `json:"Inactive"`
+}
+
+type WriteBankAccountInput struct {
+	AccountID  int64  `json:"accountID"`
+	Type       int64  `json:"type"`
+	BankNumber string `json:"bankNumber"`
+	Inactive   bool   `json:"inactive"`
+}
+
+func (w *WriteBankAccountInput) Domain() (bankAccount domain.BankAccount, err error) {
+	bankAccount.AccountID = w.AccountID
+	bankAccount.Type = w.Type
+	bankAccount.Inactive = w.Inactive
+
+	if w.BankNumber != "" {
+		if err = bankAccount.BankNumber.Scan(w.BankNumber); err != nil {
+			return
+		}
+	}
+
+	return
+}

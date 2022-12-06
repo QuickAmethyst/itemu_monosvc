@@ -28,3 +28,7 @@ type FiscalYearStatement struct {
 	EndDateGTE   time.Time
 	EndDateLTE   time.Time
 }
+
+type BankAccountStatement struct {
+	ID int64
+}

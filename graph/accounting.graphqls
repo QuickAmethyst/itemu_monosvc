@@ -13,7 +13,7 @@ extend type Query {
 
     generalLedgerPreferences(input: GeneralLedgerPreferenceInput): [GeneralLedgerPreference!]! @authenticated
 
-    fiscalYears(input: FiscalYearsInput): FiscalYearsResult!
+    fiscalYears(input: FiscalYearsInput): FiscalYearsResult! @authenticated
 }
 
 extend type Mutation {
@@ -32,6 +32,9 @@ extend type Mutation {
     storeTransaction(input: WriteTransactionInput!): Journal! @authenticated
 
     updateGeneralLedgerPreferences(input: [WriteGeneralLedgerPreferenceInput!]!): [GeneralLedgerPreference!]! @authenticated
+
+    storeBankAccount(input: WriteBankAccountInput!): BankAccount! @authenticated
+    updateBankAccountByID(id: Int!, input: WriteBankAccountInput!): BankAccount! @authenticated
 
     storeFiscalYear(input: WriteFiscalYearInput!): FiscalYear! @authenticated
     closeFiscalYear(id: Int!): Int! @authenticated
@@ -99,6 +102,13 @@ input WriteAccountClassInput {
     inactive: Boolean
 }
 
+input WriteBankAccountInput {
+    accountID: Int!
+    type: Int!
+    bankNumber: String!
+    inactive: Boolean
+}
+
 input AccountClassTypeInput {
     id: ID!
 }
@@ -162,4 +172,12 @@ type FiscalYear {
 type FiscalYearsResult {
     data: [FiscalYear!]!
     paging: Paging!
+}
+
+type BankAccount {
+    id: ID!
+    accountID: ID!
+    type: Int!
+    BankNumber: String
+    Inactive: Boolean!
 }

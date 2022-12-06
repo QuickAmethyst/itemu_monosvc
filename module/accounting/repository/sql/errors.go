@@ -37,4 +37,6 @@ const (
 	EcodeGetBalanceSheetAmountFailed
 	EcodeStoreTransactionProhibited
 	EcodeGetGeneralLedgerPreferenceFailed
+	EcodeStoreBankAccountFailed
+	EcodeUpdateBankAccountFailed
 )

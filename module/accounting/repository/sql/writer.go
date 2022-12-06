@@ -33,6 +33,9 @@ type Writer interface {
 	UpdateGeneralLedgerPreferenceByID(ctx context.Context, id int64, preference *domain.GeneralLedgerPreference) (err error)
 	UpdateGeneralLedgerPreferences(ctx context.Context, preferences []domain.GeneralLedgerPreference) (err error)
 
+	StoreBankAccount(ctx context.Context, bankAccount *domain.BankAccount) (err error)
+	UpdateBankAccountByID(ctx context.Context, id int64, bankAccount *domain.BankAccount) (err error)
+
 	StoreFiscalYear(ctx context.Context, fiscalYear *domain.FiscalYear) (err error)
 	CloseFiscalYear(ctx context.Context, id int64, userID uuid.UUID) (err error)
 }
@@ -41,6 +44,32 @@ type writer struct {
 	logger logger.Logger
 	db     sql.DB
 	reader Reader
+}
+
+func (w *writer) StoreBankAccount(ctx context.Context, bankAccount *domain.BankAccount) (err error) {
+	query := "INSERT INTO bank_accounts (account_id, type, bank_number) VALUES (?, ?, ?) RETURNING id"
+	err = w.db.QueryRowContext(
+		ctx,
+		w.db.Rebind(query),
+		bankAccount.ID, bankAccount.AccountID, bankAccount.Type, bankAccount.BankNumber,
+	).Scan(&bankAccount.ID)
+
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeStoreBankAccountFailed, "Store bank account failed")
+		return
+	}
+
+	return
+}
+
+func (w *writer) UpdateBankAccountByID(ctx context.Context, id int64, bankAccount *domain.BankAccount) (err error) {
+	bankAccount.ID = id
+	if _, err = w.db.Updates(ctx, "bank_accounts", bankAccount, &BankAccountStatement{ID: id}); err != nil {
+		err = errors.PropagateWithCode(err, EcodeUpdateBankAccountFailed, "Update bank account by id failed")
+		return
+	}
+
+	return
 }
 
 func (w *writer) CloseFiscalYear(ctx context.Context, id int64, userID uuid.UUID) (err error) {
