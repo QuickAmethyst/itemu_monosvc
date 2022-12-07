@@ -1271,7 +1271,7 @@ input WriteAccountClassInput {
 input WriteBankAccountInput {
     accountID: Int!
     type: Int!
-    bankNumber: String!
+    bankNumber: String
     inactive: Boolean
 }
 
@@ -9848,7 +9848,7 @@ func (ec *executionContext) unmarshalInputWriteBankAccountInput(ctx context.Cont
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bankNumber"))
-			it.BankNumber, err = ec.unmarshalNString2string(ctx, v)
+			it.BankNumber, err = ec.unmarshalOString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
