@@ -5,6 +5,7 @@ package graph
 
 import (
 	"context"
+
 	"github.com/QuickAmethyst/monosvc/graph/generated"
 	"github.com/QuickAmethyst/monosvc/graph/model"
 	"github.com/QuickAmethyst/monosvc/module/accounting/domain"
@@ -109,6 +110,26 @@ func (r *accountGroupResolver) Child(ctx context.Context, obj *model.AccountGrou
 	}
 
 	return result, nil
+}
+
+// Account is the resolver for the account field.
+func (r *bankAccountResolver) Account(ctx context.Context, obj *model.BankAccount) (*model.Account, error) {
+	if obj == nil || obj.AccountID <= 0 {
+		return nil, nil
+	}
+
+	account, err := r.AccountingUsecase.GetAccount(ctx, sql.AccountStatement{ID: obj.AccountID})
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on get account", libErr.GetCode(err))
+	}
+
+	return &model.Account{
+		ID:       account.ID,
+		Name:     account.Name,
+		GroupID:  account.GroupID,
+		Inactive: account.Inactive,
+	}, nil
 }
 
 // Account is the resolver for the account field.
@@ -628,6 +649,68 @@ func (r *queryResolver) FiscalYears(ctx context.Context, input *model.FiscalYear
 	}, nil
 }
 
+// BankAccountTypes is the resolver for the bankAccountTypes field.
+func (r *queryResolver) BankAccountTypes(ctx context.Context) (*model.BankAccountTypesResult, error) {
+	bankAccountTypes := r.AccountingUsecase.GetAllBankAccountTypes(ctx)
+
+	data := make([]model.BankAccountType, len(bankAccountTypes))
+	for i, bankAccountType := range bankAccountTypes {
+		data[i] = model.BankAccountType{ID: bankAccountType.ID, Name: bankAccountType.Name}
+	}
+
+	return &model.BankAccountTypesResult{Data: data}, nil
+}
+
+// BankAccounts is the resolver for the bankAccounts field.
+func (r *queryResolver) BankAccounts(ctx context.Context, input model.BankAccountsInput) (*model.BankAccountsResult, error) {
+	bankAccounts, paging, err := r.AccountingUsecase.GetBankAccountList(ctx, sql.BankAccountStatement{ID: input.Scope.ID}, qb.Paging{
+		CurrentPage: input.Paging.CurrentPage,
+		PageSize:    input.Paging.PageSize,
+	})
+
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on get bank account list", libErr.GetCode(err))
+	}
+
+	data := make([]model.BankAccount, len(bankAccounts))
+	for i, bankAccount := range bankAccounts {
+		data[i] = model.BankAccount{
+			ID:         bankAccount.ID,
+			AccountID:  bankAccount.AccountID,
+			Type:       bankAccount.Type,
+			BankNumber: bankAccount.BankNumber.String,
+			Inactive:   bankAccount.Inactive,
+		}
+	}
+
+	return &model.BankAccountsResult{
+		Data: data,
+		Paging: model.Paging{
+			CurrentPage: paging.CurrentPage,
+			PageSize:    paging.PageSize,
+			Total:       paging.Total,
+		},
+	}, nil
+}
+
+// BankAccount is the resolver for the bankAccount field.
+func (r *queryResolver) BankAccount(ctx context.Context, input model.BankAccountInput) (*model.BankAccount, error) {
+	bankAccount, err := r.AccountingUsecase.GetBankAccount(ctx, sql.BankAccountStatement{ID: input.ID})
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on get bank account", libErr.GetCode(err))
+	}
+
+	return &model.BankAccount{
+		ID:         bankAccount.ID,
+		AccountID:  bankAccount.AccountID,
+		Type:       bankAccount.Type,
+		BankNumber: bankAccount.BankNumber.String,
+		Inactive:   bankAccount.Inactive,
+	}, nil
+}
+
 // Account returns generated.AccountResolver implementation.
 func (r *Resolver) Account() generated.AccountResolver { return &accountResolver{r} }
 
@@ -637,6 +720,9 @@ func (r *Resolver) AccountClass() generated.AccountClassResolver { return &accou
 // AccountGroup returns generated.AccountGroupResolver implementation.
 func (r *Resolver) AccountGroup() generated.AccountGroupResolver { return &accountGroupResolver{r} }
 
+// BankAccount returns generated.BankAccountResolver implementation.
+func (r *Resolver) BankAccount() generated.BankAccountResolver { return &bankAccountResolver{r} }
+
 // GeneralLedgerPreference returns generated.GeneralLedgerPreferenceResolver implementation.
 func (r *Resolver) GeneralLedgerPreference() generated.GeneralLedgerPreferenceResolver {
 	return &generalLedgerPreferenceResolver{r}
@@ -645,4 +731,5 @@ func (r *Resolver) GeneralLedgerPreference() generated.GeneralLedgerPreferenceRe
 type accountResolver struct{ *Resolver }
 type accountClassResolver struct{ *Resolver }
 type accountGroupResolver struct{ *Resolver }
+type bankAccountResolver struct{ *Resolver }
 type generalLedgerPreferenceResolver struct{ *Resolver }

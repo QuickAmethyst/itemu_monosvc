@@ -47,6 +47,7 @@ type writer struct {
 }
 
 func (w *writer) StoreBankAccount(ctx context.Context, bankAccount *domain.BankAccount) (err error) {
+	// TODO: Validate account id is not already used in bank account and must has any transaction
 	query := "INSERT INTO bank_accounts (account_id, type, bank_number) VALUES (?, ?, ?) RETURNING id"
 	err = w.db.QueryRowContext(
 		ctx,
@@ -63,6 +64,7 @@ func (w *writer) StoreBankAccount(ctx context.Context, bankAccount *domain.BankA
 }
 
 func (w *writer) UpdateBankAccountByID(ctx context.Context, id int64, bankAccount *domain.BankAccount) (err error) {
+	// TODO: Validate account id is not already used in bank account and must has any transaction
 	bankAccount.ID = id
 	if _, err = w.db.Updates(ctx, "bank_accounts", bankAccount, &BankAccountStatement{ID: id}); err != nil {
 		err = errors.PropagateWithCode(err, EcodeUpdateBankAccountFailed, "Update bank account by id failed")

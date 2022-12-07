@@ -35,22 +35,90 @@ type Reader interface {
 	GetActiveFiscalYear(ctx context.Context) (fiscalYear domain.FiscalYear, err error)
 
 	GetBalanceSheetAmount(ctx context.Context, startDate time.Time, endDate time.Time) (amount float64, err error)
+
+	GetAllBankAccountTypes(ctx context.Context) (bankAccountTypes []domain.BankAccountType)
+	GetBankAccountList(ctx context.Context, stmt BankAccountStatement, p qb.Paging) (result []domain.BankAccount, paging qb.Paging, err error)
+	GetBankAccount(ctx context.Context, stmt BankAccountStatement) (bankAccount domain.BankAccount, err error)
 }
 
 type reader struct {
 	db sql.DB
 }
 
+func (r *reader) GetAllBankAccountTypes(ctx context.Context) (bankAccountTypes []domain.BankAccountType) {
+	bankAccountTypes = append(
+		bankAccountTypes,
+		domain.BankAccountType{
+			ID:   domain.CashAccountType,
+			Name: "Cash Account",
+		},
+		domain.BankAccountType{
+			ID:   domain.ChequingAccountType,
+			Name: "Chequing Account",
+		},
+		domain.BankAccountType{
+			ID:   domain.SavingAccountType,
+			Name: "Saving Account",
+		},
+	)
+
+	return
+}
+
+func (r *reader) GetBankAccountList(ctx context.Context, stmt BankAccountStatement, p qb.Paging) (result []domain.BankAccount, paging qb.Paging, err error) {
+	result = make([]domain.BankAccount, 0)
+	paging = p
+	paging.Normalize()
+
+	fromClause := "FROM bank_accounts"
+	limitClause, limitClauseArgs := paging.BuildQuery()
+	whereClause, whereClauseArgs, err := qb.NewWhereClause(stmt)
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetBankAccountListFailed, "Failed on get bank account list")
+		return
+	}
+
+	selectQuery := fmt.Sprintf("SELECT id, account_id, type, bank_number, inactive %s %s %s", fromClause, whereClause, limitClause)
+	if err = r.db.SelectContext(ctx, &result, r.db.Rebind(selectQuery), append(whereClauseArgs, limitClauseArgs...)...); err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetBankAccountListFailed, "Failed on get bank account list")
+		return
+	}
+
+	countQuery := fmt.Sprintf("SELECT COUNT(*) %s %s", fromClause, whereClause)
+	if err = r.db.GetContext(ctx, &paging.Total, r.db.Rebind(countQuery), whereClauseArgs...); err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetBankAccountListFailed, "Failed on count bank account list")
+		return
+	}
+
+	return
+}
+
+func (r *reader) GetBankAccount(ctx context.Context, stmt BankAccountStatement) (bankAccount domain.BankAccount, err error) {
+	whereClause, whereClauseArgs, err := qb.NewWhereClause(stmt)
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetBankAccountFailed, "Failed on get bank account")
+		return
+	}
+
+	query := fmt.Sprintf("SELECT id, account_id, type, bank_number, inactive FROM bank_accounts %s ORDER BY id ASC", whereClause)
+	if err = r.db.GetContext(ctx, &bankAccount, r.db.Rebind(query), whereClauseArgs...); err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetBankAccountFailed, "Failed on get bank account")
+		return
+	}
+
+	return
+}
+
 func (r *reader) GetGeneralLedgerPreferenceByID(ctx context.Context, stmt GeneralLedgerPreferenceStatement) (preference domain.GeneralLedgerPreference, err error) {
 	whereClause, whereClauseArgs, err := qb.NewWhereClause(stmt)
 	if err != nil {
-		err = errors.PropagateWithCode(err, EcodeGetAllGeneralLedgerPreferencesFailed, "Failed on get general ledger preference")
+		err = errors.PropagateWithCode(err, EcodeGetGeneralLedgerPreferenceFailed, "Failed on get general ledger preference")
 		return
 	}
 
 	query := fmt.Sprintf("SELECT id, account_id FROM general_ledger_preferences %s", whereClause)
 	if err = r.db.GetContext(ctx, &preference, r.db.Rebind(query), whereClauseArgs...); err != nil {
-		err = errors.PropagateWithCode(err, EcodeGetAllGeneralLedgerPreferencesFailed, "Failed on get general ledger preference")
+		err = errors.PropagateWithCode(err, EcodeGetGeneralLedgerPreferenceFailed, "Failed on get general ledger preference")
 		return
 	}
 
@@ -143,7 +211,7 @@ func (r *reader) GetAllAccounts(ctx context.Context, stmt AccountStatement) (res
 	fromClause := "FROM accounts"
 	whereClause, whereClauseArgs, err := qb.NewWhereClause(stmt)
 	if err != nil {
-		err = errors.PropagateWithCode(err , EcodeGetAllAccountsFailed, "Failed on get all accounts")
+		err = errors.PropagateWithCode(err, EcodeGetAllAccountsFailed, "Failed on get all accounts")
 		return
 	}
 
@@ -276,7 +344,6 @@ func (r *reader) GetAllAccountClasses(ctx context.Context, stmt AccountClassStat
 
 	return
 }
-
 
 func (r *reader) ValidatePreferences(ctx context.Context, preferences []domain.GeneralLedgerPreference) (err error) {
 	var fieldErrors []errors.FieldError

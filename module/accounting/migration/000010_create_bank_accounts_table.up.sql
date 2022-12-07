@@ -1,4 +1,4 @@
-CREATE TYPE bank_account_type AS ENUM (1, 2, 3, 4);
+CREATE TYPE bank_account_type AS ENUM (1, 2, 3);
 CREATE TABLE IF NOT EXISTS bank_accounts
 (
     id          SERIAL PRIMARY KEY,

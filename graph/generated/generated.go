@@ -40,6 +40,7 @@ type ResolverRoot interface {
 	Account() AccountResolver
 	AccountClass() AccountClassResolver
 	AccountGroup() AccountGroupResolver
+	BankAccount() BankAccountResolver
 	GeneralLedgerPreference() GeneralLedgerPreferenceResolver
 	Mutation() MutationResolver
 	Query() QueryResolver
@@ -87,11 +88,26 @@ type ComplexityRoot struct {
 	}
 
 	BankAccount struct {
+		Account    func(childComplexity int) int
 		AccountID  func(childComplexity int) int
 		BankNumber func(childComplexity int) int
 		ID         func(childComplexity int) int
 		Inactive   func(childComplexity int) int
 		Type       func(childComplexity int) int
+	}
+
+	BankAccountType struct {
+		ID   func(childComplexity int) int
+		Name func(childComplexity int) int
+	}
+
+	BankAccountTypesResult struct {
+		Data func(childComplexity int) int
+	}
+
+	BankAccountsResult struct {
+		Data   func(childComplexity int) int
+		Paging func(childComplexity int) int
 	}
 
 	Credential struct {
@@ -163,6 +179,9 @@ type ComplexityRoot struct {
 		AccountGroup             func(childComplexity int, input model.AccountGroupInput) int
 		AccountGroups            func(childComplexity int, input *model.AccountGroupInput) int
 		Accounts                 func(childComplexity int, input *model.AccountInput) int
+		BankAccount              func(childComplexity int, input model.BankAccountInput) int
+		BankAccountTypes         func(childComplexity int) int
+		BankAccounts             func(childComplexity int, input model.BankAccountsInput) int
 		FiscalYears              func(childComplexity int, input *model.FiscalYearsInput) int
 		GeneralLedgerPreferences func(childComplexity int, input *model.GeneralLedgerPreferenceInput) int
 		Uoms                     func(childComplexity int, input *model.UomsInput) int
@@ -192,6 +211,9 @@ type AccountGroupResolver interface {
 	Class(ctx context.Context, obj *model.AccountGroup) (*model.AccountClass, error)
 
 	Child(ctx context.Context, obj *model.AccountGroup) ([]*model.AccountGroup, error)
+}
+type BankAccountResolver interface {
+	Account(ctx context.Context, obj *model.BankAccount) (*model.Account, error)
 }
 type GeneralLedgerPreferenceResolver interface {
 	Account(ctx context.Context, obj *model.GeneralLedgerPreference) (*model.Account, error)
@@ -228,6 +250,9 @@ type QueryResolver interface {
 	Account(ctx context.Context, input model.AccountInput) (*model.Account, error)
 	GeneralLedgerPreferences(ctx context.Context, input *model.GeneralLedgerPreferenceInput) ([]*model.GeneralLedgerPreference, error)
 	FiscalYears(ctx context.Context, input *model.FiscalYearsInput) (*model.FiscalYearsResult, error)
+	BankAccountTypes(ctx context.Context) (*model.BankAccountTypesResult, error)
+	BankAccounts(ctx context.Context, input model.BankAccountsInput) (*model.BankAccountsResult, error)
+	BankAccount(ctx context.Context, input model.BankAccountInput) (*model.BankAccount, error)
 	Uoms(ctx context.Context, input *model.UomsInput) (*model.UomsResult, error)
 }
 
@@ -393,6 +418,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.AccountGroup.ParentID(childComplexity), true
 
+	case "BankAccount.account":
+		if e.complexity.BankAccount.Account == nil {
+			break
+		}
+
+		return e.complexity.BankAccount.Account(childComplexity), true
+
 	case "BankAccount.accountID":
 		if e.complexity.BankAccount.AccountID == nil {
 			break
@@ -427,6 +459,41 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.BankAccount.Type(childComplexity), true
+
+	case "BankAccountType.id":
+		if e.complexity.BankAccountType.ID == nil {
+			break
+		}
+
+		return e.complexity.BankAccountType.ID(childComplexity), true
+
+	case "BankAccountType.name":
+		if e.complexity.BankAccountType.Name == nil {
+			break
+		}
+
+		return e.complexity.BankAccountType.Name(childComplexity), true
+
+	case "BankAccountTypesResult.data":
+		if e.complexity.BankAccountTypesResult.Data == nil {
+			break
+		}
+
+		return e.complexity.BankAccountTypesResult.Data(childComplexity), true
+
+	case "BankAccountsResult.data":
+		if e.complexity.BankAccountsResult.Data == nil {
+			break
+		}
+
+		return e.complexity.BankAccountsResult.Data(childComplexity), true
+
+	case "BankAccountsResult.paging":
+		if e.complexity.BankAccountsResult.Paging == nil {
+			break
+		}
+
+		return e.complexity.BankAccountsResult.Paging(childComplexity), true
 
 	case "Credential.accessExpire":
 		if e.complexity.Credential.AccessExpire == nil {
@@ -882,6 +949,37 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Accounts(childComplexity, args["input"].(*model.AccountInput)), true
 
+	case "Query.bankAccount":
+		if e.complexity.Query.BankAccount == nil {
+			break
+		}
+
+		args, err := ec.field_Query_bankAccount_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.BankAccount(childComplexity, args["input"].(model.BankAccountInput)), true
+
+	case "Query.bankAccountTypes":
+		if e.complexity.Query.BankAccountTypes == nil {
+			break
+		}
+
+		return e.complexity.Query.BankAccountTypes(childComplexity), true
+
+	case "Query.bankAccounts":
+		if e.complexity.Query.BankAccounts == nil {
+			break
+		}
+
+		args, err := ec.field_Query_bankAccounts_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.BankAccounts(childComplexity, args["input"].(model.BankAccountsInput)), true
+
 	case "Query.fiscalYears":
 		if e.complexity.Query.FiscalYears == nil {
 			break
@@ -972,6 +1070,9 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputAccountClassTypeInput,
 		ec.unmarshalInputAccountGroupInput,
 		ec.unmarshalInputAccountInput,
+		ec.unmarshalInputBankAccountInput,
+		ec.unmarshalInputBankAccountsInput,
+		ec.unmarshalInputBankAccountsInputScope,
 		ec.unmarshalInputFiscalYearsInput,
 		ec.unmarshalInputGeneralLedgerPreferenceInput,
 		ec.unmarshalInputPagingInput,
@@ -1062,6 +1163,10 @@ var sources = []*ast.Source{
     generalLedgerPreferences(input: GeneralLedgerPreferenceInput): [GeneralLedgerPreference!]! @authenticated
 
     fiscalYears(input: FiscalYearsInput): FiscalYearsResult! @authenticated
+
+    bankAccountTypes: BankAccountTypesResult! @authenticated
+    bankAccounts(input: BankAccountsInput!): BankAccountsResult! @authenticated
+    bankAccount(input: BankAccountInput!): BankAccount! @authenticated
 }
 
 extend type Mutation {
@@ -1099,6 +1204,19 @@ input WriteFiscalYearInput {
 }
 
 input GeneralLedgerPreferenceInput {
+    id: ID
+}
+
+input BankAccountsInputScope {
+    id: ID
+}
+
+input BankAccountsInput {
+    scope: BankAccountsInputScope
+    paging: PagingInput
+}
+
+input BankAccountInput {
     id: ID
 }
 
@@ -1171,7 +1289,7 @@ type AccountClass {
     name: String!
     typeID: Int!
     inactive: Boolean
-    type: AccountClassType
+    type: AccountClassType!
 }
 
 type AccountClassTypesResult {
@@ -1207,7 +1325,7 @@ type Journal {
 type GeneralLedgerPreference {
     id: ID!
     accountID: ID!
-    account: Account
+    account: Account!
 }
 
 type FiscalYear {
@@ -1228,8 +1346,22 @@ type BankAccount {
     type: Int!
     BankNumber: String
     Inactive: Boolean!
+    account: Account!
 }
-`, BuiltIn: false},
+
+type BankAccountType {
+    id: ID!
+    name: String!
+}
+
+type BankAccountTypesResult {
+    data: [BankAccountType!]!
+}
+
+type BankAccountsResult {
+    data: [BankAccount!]!
+    paging: Paging!
+}`, BuiltIn: false},
 	{Name: "../auth.graphqls", Input: `extend type Mutation {
     signIn(input: SignInInput!): Credential!
     refreshCredential(input: String!): Credential!
@@ -1731,6 +1863,36 @@ func (ec *executionContext) field_Query_accounts_args(ctx context.Context, rawAr
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 		arg0, err = ec.unmarshalOAccountInput2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_bankAccount_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.BankAccountInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNBankAccountInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_bankAccounts_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.BankAccountsInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNBankAccountsInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountsInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -2254,11 +2416,14 @@ func (ec *executionContext) _AccountClass_type(ctx context.Context, field graphq
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*model.AccountClassType)
 	fc.Result = res
-	return ec.marshalOAccountClassType2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassType(ctx, field.Selections, res)
+	return ec.marshalNAccountClassType2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassType(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_AccountClass_type(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -3029,6 +3194,310 @@ func (ec *executionContext) fieldContext_BankAccount_Inactive(ctx context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _BankAccount_account(ctx context.Context, field graphql.CollectedField, obj *model.BankAccount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BankAccount_account(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.BankAccount().Account(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Account)
+	fc.Result = res
+	return ec.marshalNAccount2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccount(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BankAccount_account(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BankAccount",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Account_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Account_name(ctx, field)
+			case "groupID":
+				return ec.fieldContext_Account_groupID(ctx, field)
+			case "inactive":
+				return ec.fieldContext_Account_inactive(ctx, field)
+			case "group":
+				return ec.fieldContext_Account_group(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Account", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BankAccountType_id(ctx context.Context, field graphql.CollectedField, obj *model.BankAccountType) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BankAccountType_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalNID2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BankAccountType_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BankAccountType",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BankAccountType_name(ctx context.Context, field graphql.CollectedField, obj *model.BankAccountType) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BankAccountType_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BankAccountType_name(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BankAccountType",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BankAccountTypesResult_data(ctx context.Context, field graphql.CollectedField, obj *model.BankAccountTypesResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BankAccountTypesResult_data(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Data, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.BankAccountType)
+	fc.Result = res
+	return ec.marshalNBankAccountType2ᚕgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountTypeᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BankAccountTypesResult_data(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BankAccountTypesResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_BankAccountType_id(ctx, field)
+			case "name":
+				return ec.fieldContext_BankAccountType_name(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BankAccountType", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BankAccountsResult_data(ctx context.Context, field graphql.CollectedField, obj *model.BankAccountsResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BankAccountsResult_data(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Data, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.BankAccount)
+	fc.Result = res
+	return ec.marshalNBankAccount2ᚕgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BankAccountsResult_data(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BankAccountsResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_BankAccount_id(ctx, field)
+			case "accountID":
+				return ec.fieldContext_BankAccount_accountID(ctx, field)
+			case "type":
+				return ec.fieldContext_BankAccount_type(ctx, field)
+			case "BankNumber":
+				return ec.fieldContext_BankAccount_BankNumber(ctx, field)
+			case "Inactive":
+				return ec.fieldContext_BankAccount_Inactive(ctx, field)
+			case "account":
+				return ec.fieldContext_BankAccount_account(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BankAccount", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BankAccountsResult_paging(ctx context.Context, field graphql.CollectedField, obj *model.BankAccountsResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BankAccountsResult_paging(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Paging, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.Paging)
+	fc.Result = res
+	return ec.marshalNPaging2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐPaging(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BankAccountsResult_paging(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BankAccountsResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "currentPage":
+				return ec.fieldContext_Paging_currentPage(ctx, field)
+			case "pageSize":
+				return ec.fieldContext_Paging_pageSize(ctx, field)
+			case "total":
+				return ec.fieldContext_Paging_total(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Paging", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Credential_accessToken(ctx context.Context, field graphql.CollectedField, obj *model.Credential) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Credential_accessToken(ctx, field)
 	if err != nil {
@@ -3596,11 +4065,14 @@ func (ec *executionContext) _GeneralLedgerPreference_account(ctx context.Context
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*model.Account)
 	fc.Result = res
-	return ec.marshalOAccount2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccount(ctx, field.Selections, res)
+	return ec.marshalNAccount2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccount(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_GeneralLedgerPreference_account(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -4800,6 +5272,8 @@ func (ec *executionContext) fieldContext_Mutation_storeBankAccount(ctx context.C
 				return ec.fieldContext_BankAccount_BankNumber(ctx, field)
 			case "Inactive":
 				return ec.fieldContext_BankAccount_Inactive(ctx, field)
+			case "account":
+				return ec.fieldContext_BankAccount_account(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BankAccount", field.Name)
 		},
@@ -4887,6 +5361,8 @@ func (ec *executionContext) fieldContext_Mutation_updateBankAccountByID(ctx cont
 				return ec.fieldContext_BankAccount_BankNumber(ctx, field)
 			case "Inactive":
 				return ec.fieldContext_BankAccount_Inactive(ctx, field)
+			case "account":
+				return ec.fieldContext_BankAccount_account(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BankAccount", field.Name)
 		},
@@ -6327,6 +6803,244 @@ func (ec *executionContext) fieldContext_Query_fiscalYears(ctx context.Context, 
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_fiscalYears_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_bankAccountTypes(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_bankAccountTypes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Query().BankAccountTypes(rctx)
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.Authenticated == nil {
+				return nil, errors.New("directive authenticated is not implemented")
+			}
+			return ec.directives.Authenticated(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.BankAccountTypesResult); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/QuickAmethyst/monosvc/graph/model.BankAccountTypesResult`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.BankAccountTypesResult)
+	fc.Result = res
+	return ec.marshalNBankAccountTypesResult2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountTypesResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_bankAccountTypes(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "data":
+				return ec.fieldContext_BankAccountTypesResult_data(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BankAccountTypesResult", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_bankAccounts(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_bankAccounts(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Query().BankAccounts(rctx, fc.Args["input"].(model.BankAccountsInput))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.Authenticated == nil {
+				return nil, errors.New("directive authenticated is not implemented")
+			}
+			return ec.directives.Authenticated(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.BankAccountsResult); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/QuickAmethyst/monosvc/graph/model.BankAccountsResult`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.BankAccountsResult)
+	fc.Result = res
+	return ec.marshalNBankAccountsResult2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountsResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_bankAccounts(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "data":
+				return ec.fieldContext_BankAccountsResult_data(ctx, field)
+			case "paging":
+				return ec.fieldContext_BankAccountsResult_paging(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BankAccountsResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_bankAccounts_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_bankAccount(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_bankAccount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Query().BankAccount(rctx, fc.Args["input"].(model.BankAccountInput))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.Authenticated == nil {
+				return nil, errors.New("directive authenticated is not implemented")
+			}
+			return ec.directives.Authenticated(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.BankAccount); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/QuickAmethyst/monosvc/graph/model.BankAccount`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.BankAccount)
+	fc.Result = res
+	return ec.marshalNBankAccount2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccount(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_bankAccount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_BankAccount_id(ctx, field)
+			case "accountID":
+				return ec.fieldContext_BankAccount_accountID(ctx, field)
+			case "type":
+				return ec.fieldContext_BankAccount_type(ctx, field)
+			case "BankNumber":
+				return ec.fieldContext_BankAccount_BankNumber(ctx, field)
+			case "Inactive":
+				return ec.fieldContext_BankAccount_Inactive(ctx, field)
+			case "account":
+				return ec.fieldContext_BankAccount_account(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BankAccount", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_bankAccount_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -8712,6 +9426,98 @@ func (ec *executionContext) unmarshalInputAccountInput(ctx context.Context, obj 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputBankAccountInput(ctx context.Context, obj interface{}) (model.BankAccountInput, error) {
+	var it model.BankAccountInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			it.ID, err = ec.unmarshalOID2int64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputBankAccountsInput(ctx context.Context, obj interface{}) (model.BankAccountsInput, error) {
+	var it model.BankAccountsInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"scope", "paging"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "scope":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scope"))
+			it.Scope, err = ec.unmarshalOBankAccountsInputScope2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountsInputScope(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "paging":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("paging"))
+			it.Paging, err = ec.unmarshalOPagingInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐPagingInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputBankAccountsInputScope(ctx context.Context, obj interface{}) (model.BankAccountsInputScope, error) {
+	var it model.BankAccountsInputScope
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			it.ID, err = ec.unmarshalOID2int64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputFiscalYearsInput(ctx context.Context, obj interface{}) (model.FiscalYearsInput, error) {
 	var it model.FiscalYearsInput
 	asMap := map[string]interface{}{}
@@ -9386,6 +10192,9 @@ func (ec *executionContext) _AccountClass(ctx context.Context, sel ast.Selection
 					}
 				}()
 				res = ec._AccountClass_type(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			}
 
@@ -9592,21 +10401,21 @@ func (ec *executionContext) _BankAccount(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = ec._BankAccount_id(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "accountID":
 
 			out.Values[i] = ec._BankAccount_accountID(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "type":
 
 			out.Values[i] = ec._BankAccount_type(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "BankNumber":
 
@@ -9615,6 +10424,124 @@ func (ec *executionContext) _BankAccount(ctx context.Context, sel ast.SelectionS
 		case "Inactive":
 
 			out.Values[i] = ec._BankAccount_Inactive(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "account":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._BankAccount_account(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var bankAccountTypeImplementors = []string{"BankAccountType"}
+
+func (ec *executionContext) _BankAccountType(ctx context.Context, sel ast.SelectionSet, obj *model.BankAccountType) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, bankAccountTypeImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BankAccountType")
+		case "id":
+
+			out.Values[i] = ec._BankAccountType_id(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "name":
+
+			out.Values[i] = ec._BankAccountType_name(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var bankAccountTypesResultImplementors = []string{"BankAccountTypesResult"}
+
+func (ec *executionContext) _BankAccountTypesResult(ctx context.Context, sel ast.SelectionSet, obj *model.BankAccountTypesResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, bankAccountTypesResultImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BankAccountTypesResult")
+		case "data":
+
+			out.Values[i] = ec._BankAccountTypesResult_data(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var bankAccountsResultImplementors = []string{"BankAccountsResult"}
+
+func (ec *executionContext) _BankAccountsResult(ctx context.Context, sel ast.SelectionSet, obj *model.BankAccountsResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, bankAccountsResultImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BankAccountsResult")
+		case "data":
+
+			out.Values[i] = ec._BankAccountsResult_data(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "paging":
+
+			out.Values[i] = ec._BankAccountsResult_paging(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				invalids++
@@ -9797,6 +10724,9 @@ func (ec *executionContext) _GeneralLedgerPreference(ctx context.Context, sel as
 					}
 				}()
 				res = ec._GeneralLedgerPreference_account(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			}
 
@@ -10343,6 +11273,75 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_fiscalYears(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
+		case "bankAccountTypes":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_bankAccountTypes(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
+		case "bankAccounts":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_bankAccounts(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
+		case "bankAccount":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_bankAccount(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -11068,6 +12067,50 @@ func (ec *executionContext) marshalNBankAccount2githubᚗcomᚋQuickAmethystᚋm
 	return ec._BankAccount(ctx, sel, &v)
 }
 
+func (ec *executionContext) marshalNBankAccount2ᚕgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountᚄ(ctx context.Context, sel ast.SelectionSet, v []model.BankAccount) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNBankAccount2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccount(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalNBankAccount2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccount(ctx context.Context, sel ast.SelectionSet, v *model.BankAccount) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -11076,6 +12119,92 @@ func (ec *executionContext) marshalNBankAccount2ᚖgithubᚗcomᚋQuickAmethyst�
 		return graphql.Null
 	}
 	return ec._BankAccount(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNBankAccountInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountInput(ctx context.Context, v interface{}) (model.BankAccountInput, error) {
+	res, err := ec.unmarshalInputBankAccountInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBankAccountType2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountType(ctx context.Context, sel ast.SelectionSet, v model.BankAccountType) graphql.Marshaler {
+	return ec._BankAccountType(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNBankAccountType2ᚕgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountTypeᚄ(ctx context.Context, sel ast.SelectionSet, v []model.BankAccountType) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNBankAccountType2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountType(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNBankAccountTypesResult2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountTypesResult(ctx context.Context, sel ast.SelectionSet, v model.BankAccountTypesResult) graphql.Marshaler {
+	return ec._BankAccountTypesResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNBankAccountTypesResult2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountTypesResult(ctx context.Context, sel ast.SelectionSet, v *model.BankAccountTypesResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._BankAccountTypesResult(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNBankAccountsInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountsInput(ctx context.Context, v interface{}) (model.BankAccountsInput, error) {
+	res, err := ec.unmarshalInputBankAccountsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBankAccountsResult2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountsResult(ctx context.Context, sel ast.SelectionSet, v model.BankAccountsResult) graphql.Marshaler {
+	return ec._BankAccountsResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNBankAccountsResult2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountsResult(ctx context.Context, sel ast.SelectionSet, v *model.BankAccountsResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._BankAccountsResult(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v interface{}) (bool, error) {
@@ -11790,25 +12919,11 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 	return res
 }
 
-func (ec *executionContext) marshalOAccount2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccount(ctx context.Context, sel ast.SelectionSet, v *model.Account) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._Account(ctx, sel, v)
-}
-
 func (ec *executionContext) marshalOAccountClass2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClass(ctx context.Context, sel ast.SelectionSet, v *model.AccountClass) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._AccountClass(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOAccountClassType2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassType(ctx context.Context, sel ast.SelectionSet, v *model.AccountClassType) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._AccountClassType(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOAccountGroup2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountGroup(ctx context.Context, sel ast.SelectionSet, v *model.AccountGroup) graphql.Marshaler {
@@ -11832,6 +12947,11 @@ func (ec *executionContext) unmarshalOAccountInput2ᚖgithubᚗcomᚋQuickAmethy
 	}
 	res, err := ec.unmarshalInputAccountInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOBankAccountsInputScope2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountsInputScope(ctx context.Context, v interface{}) (model.BankAccountsInputScope, error) {
+	res, err := ec.unmarshalInputBankAccountsInputScope(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v interface{}) (bool, error) {

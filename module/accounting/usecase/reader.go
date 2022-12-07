@@ -27,10 +27,26 @@ type Reader interface {
 	GetAllGeneralLedgerPreferences(ctx context.Context, stmt sql.GeneralLedgerPreferenceStatement) (preferences []domain.GeneralLedgerPreference, err error)
 
 	GetFiscalYearList(ctx context.Context, stmt sql.FiscalYearStatement, p qb.Paging) (result []domain.FiscalYear, paging qb.Paging, err error)
+
+	GetAllBankAccountTypes(ctx context.Context) (bankAccountTypes []domain.BankAccountType)
+	GetBankAccountList(ctx context.Context, stmt sql.BankAccountStatement, p qb.Paging) (result []domain.BankAccount, paging qb.Paging, err error)
+	GetBankAccount(ctx context.Context, stmt sql.BankAccountStatement) (bankAccount domain.BankAccount, err error)
 }
 
 type reader struct {
 	AccountingSQL sql.SQL
+}
+
+func (r *reader) GetAllBankAccountTypes(ctx context.Context) (bankAccountTypes []domain.BankAccountType) {
+	return r.AccountingSQL.GetAllBankAccountTypes(ctx)
+}
+
+func (r *reader) GetBankAccountList(ctx context.Context, stmt sql.BankAccountStatement, p qb.Paging) (result []domain.BankAccount, paging qb.Paging, err error) {
+	return r.AccountingSQL.GetBankAccountList(ctx, stmt, p)
+}
+
+func (r *reader) GetBankAccount(ctx context.Context, stmt sql.BankAccountStatement) (bankAccount domain.BankAccount, err error) {
+	return r.AccountingSQL.GetBankAccount(ctx, stmt)
 }
 
 func (r *reader) GetFiscalYearList(ctx context.Context, stmt sql.FiscalYearStatement, p qb.Paging) (result []domain.FiscalYear, paging qb.Paging, err error) {

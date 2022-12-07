@@ -2,10 +2,8 @@ package domain
 
 import "database/sql"
 
-type BankAccountType int64
-
 const (
-	CashAccountType BankAccountType = iota + 1
+	CashAccountType int64 = iota + 1
 	ChequingAccountType
 	SavingAccountType
 	CreditAccountType

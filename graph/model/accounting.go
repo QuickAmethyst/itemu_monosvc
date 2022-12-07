@@ -203,3 +203,30 @@ func (w *WriteBankAccountInput) Domain() (bankAccount domain.BankAccount, err er
 
 	return
 }
+
+type BankAccountInput struct {
+	ID int64 `json:"id"`
+}
+
+type BankAccountType struct {
+	ID   int64 `json:"id"`
+	Name string `json:"name"`
+}
+
+type BankAccountTypesResult struct {
+	Data []BankAccountType `json:"data"`
+}
+
+type BankAccountsResult struct {
+	Data   []BankAccount `json:"data"`
+	Paging Paging        `json:"paging"`
+}
+
+type BankAccountsInputScope struct {
+	ID int64 `json:"id"`
+}
+
+type BankAccountsInput struct {
+	Scope  BankAccountsInputScope `json:"scope"`
+	Paging PagingInput            `json:"paging"`
+}

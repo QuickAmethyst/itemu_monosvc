@@ -39,4 +39,6 @@ const (
 	EcodeGetGeneralLedgerPreferenceFailed
 	EcodeStoreBankAccountFailed
 	EcodeUpdateBankAccountFailed
+	EcodeGetBankAccountListFailed
+	EcodeGetBankAccountFailed
 )
