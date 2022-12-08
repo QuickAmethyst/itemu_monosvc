@@ -7,6 +7,7 @@ import (
 	"github.com/QuickAmethyst/monosvc/stdlibgo/errors"
 	qb "github.com/QuickAmethyst/monosvc/stdlibgo/querybuilder/sql"
 	"github.com/QuickAmethyst/monosvc/stdlibgo/sql"
+	"strings"
 	"time"
 )
 
@@ -208,14 +209,26 @@ func (r *reader) GetAllGeneralLedgerPreferences(ctx context.Context, stmt Genera
 
 func (r *reader) GetAllAccounts(ctx context.Context, stmt AccountStatement) (result []domain.Account, err error) {
 	result = make([]domain.Account, 0)
-	fromClause := "FROM accounts"
 	whereClause, whereClauseArgs, err := qb.NewWhereClause(stmt)
 	if err != nil {
 		err = errors.PropagateWithCode(err, EcodeGetAllAccountsFailed, "Failed on get all accounts")
 		return
 	}
 
-	query := fmt.Sprintf("SELECT id, name, group_id, inactive %s %s", fromClause, whereClause)
+	query := "SELECT accounts.id, accounts.name, accounts.group_id, accounts.inactive FROM accounts"
+	if stmt.ClassType > 0 {
+		query += ", account_groups, account_classes"
+		query += " WHERE accounts.group_id = account_groups.id AND account_groups.class_id = account_classes.id"
+		query += " AND account_classes.type_id = ? AND"
+		whereClauseArgs = append(whereClauseArgs, stmt.ClassType)
+	}
+
+	if strings.HasSuffix(query, "AND") && whereClause == "" {
+		query = query[:len(query) - 4]
+	} else {
+		query += " " + whereClause
+	}
+
 	if err = r.db.SelectContext(ctx, &result, r.db.Rebind(query), whereClauseArgs...); err != nil {
 		err = errors.PropagateWithCode(err, EcodeGetAllAccountGroupsFailed, "Failed on get all accounts")
 		return

@@ -1,6 +1,8 @@
 package sql
 
-import "time"
+import (
+	"time"
+)
 
 type AccountClassStatement struct {
 	ID int64
@@ -13,7 +15,8 @@ type AccountGroupStatement struct {
 }
 
 type AccountStatement struct {
-	ID int64
+	ID        int64
+	ClassType int64 `qb:"-"`
 }
 
 type GeneralLedgerPreferenceStatement struct {

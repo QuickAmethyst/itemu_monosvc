@@ -12,7 +12,7 @@ type Condition struct {
 }
 
 func (c *Condition) BuildQuery() (query string, args []interface{}, err error) {
-	strct   := reflect.ValueOf(c.stmt)
+	strct := reflect.ValueOf(c.stmt)
 	if strct.Kind() == reflect.Pointer && strct.IsNil() {
 		err = ErrStmtNil
 		return
@@ -25,6 +25,11 @@ func (c *Condition) BuildQuery() (query string, args []interface{}, err error) {
 			scopeArg   interface{}
 			skipArg    bool
 		)
+
+		isIgnore := typeOfT.Field(i).Tag.Get("qb") == "-"
+		if isIgnore {
+			continue
+		}
 
 		fieldValue := reflect.Indirect(strct).Field(i).Interface()
 		isValueEmpty := reflect.ValueOf(fieldValue).IsZero()

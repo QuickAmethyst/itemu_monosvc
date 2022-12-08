@@ -546,6 +546,7 @@ func (r *queryResolver) Accounts(ctx context.Context, input *model.AccountInput)
 	var stmt sql.AccountStatement
 	if input != nil {
 		stmt.ID = input.ID
+		stmt.ClassType = input.ClassType
 	}
 
 	accounts, err := r.AccountingUsecase.GetAllAccounts(ctx, stmt)

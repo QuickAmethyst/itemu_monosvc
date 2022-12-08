@@ -89,6 +89,7 @@ input WriteTransactionInput {
 
 input AccountInput {
     id: Int
+    classType: Int
 }
 
 input WriteAccountInput {

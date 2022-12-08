@@ -1238,6 +1238,7 @@ input WriteTransactionInput {
 
 input AccountInput {
     id: Int
+    classType: Int
 }
 
 input WriteAccountInput {
@@ -9405,7 +9406,7 @@ func (ec *executionContext) unmarshalInputAccountInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id"}
+	fieldsInOrder := [...]string{"id", "classType"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -9417,6 +9418,14 @@ func (ec *executionContext) unmarshalInputAccountInput(ctx context.Context, obj 
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
 			it.ID, err = ec.unmarshalOInt2int64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "classType":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("classType"))
+			it.ClassType, err = ec.unmarshalOInt2int64(ctx, v)
 			if err != nil {
 				return it, err
 			}

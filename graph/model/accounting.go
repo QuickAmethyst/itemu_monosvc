@@ -102,7 +102,8 @@ func (w *WriteAccountInput) Domain() (account domain.Account) {
 }
 
 type AccountInput struct {
-	ID int64 `json:"id"`
+	ID        int64 `json:"id"`
+	ClassType int64 `json:"classType"`
 }
 
 type Journal struct {
@@ -209,7 +210,7 @@ type BankAccountInput struct {
 }
 
 type BankAccountType struct {
-	ID   int64 `json:"id"`
+	ID   int64  `json:"id"`
 	Name string `json:"name"`
 }
 
