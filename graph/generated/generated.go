@@ -432,7 +432,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.BankAccount.AccountID(childComplexity), true
 
-	case "BankAccount.BankNumber":
+	case "BankAccount.bankNumber":
 		if e.complexity.BankAccount.BankNumber == nil {
 			break
 		}
@@ -446,7 +446,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.BankAccount.ID(childComplexity), true
 
-	case "BankAccount.Inactive":
+	case "BankAccount.inactive":
 		if e.complexity.BankAccount.Inactive == nil {
 			break
 		}
@@ -1344,8 +1344,8 @@ type BankAccount {
     id: ID!
     accountID: ID!
     type: Int!
-    BankNumber: String
-    Inactive: Boolean!
+    bankNumber: String
+    inactive: Boolean!
     account: Account!
 }
 
@@ -3109,8 +3109,8 @@ func (ec *executionContext) fieldContext_BankAccount_type(ctx context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _BankAccount_BankNumber(ctx context.Context, field graphql.CollectedField, obj *model.BankAccount) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_BankAccount_BankNumber(ctx, field)
+func (ec *executionContext) _BankAccount_bankNumber(ctx context.Context, field graphql.CollectedField, obj *model.BankAccount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BankAccount_bankNumber(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -3137,7 +3137,7 @@ func (ec *executionContext) _BankAccount_BankNumber(ctx context.Context, field g
 	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_BankAccount_BankNumber(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_BankAccount_bankNumber(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "BankAccount",
 		Field:      field,
@@ -3150,8 +3150,8 @@ func (ec *executionContext) fieldContext_BankAccount_BankNumber(ctx context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _BankAccount_Inactive(ctx context.Context, field graphql.CollectedField, obj *model.BankAccount) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_BankAccount_Inactive(ctx, field)
+func (ec *executionContext) _BankAccount_inactive(ctx context.Context, field graphql.CollectedField, obj *model.BankAccount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BankAccount_inactive(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -3181,7 +3181,7 @@ func (ec *executionContext) _BankAccount_Inactive(ctx context.Context, field gra
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_BankAccount_Inactive(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_BankAccount_inactive(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "BankAccount",
 		Field:      field,
@@ -3433,10 +3433,10 @@ func (ec *executionContext) fieldContext_BankAccountsResult_data(ctx context.Con
 				return ec.fieldContext_BankAccount_accountID(ctx, field)
 			case "type":
 				return ec.fieldContext_BankAccount_type(ctx, field)
-			case "BankNumber":
-				return ec.fieldContext_BankAccount_BankNumber(ctx, field)
-			case "Inactive":
-				return ec.fieldContext_BankAccount_Inactive(ctx, field)
+			case "bankNumber":
+				return ec.fieldContext_BankAccount_bankNumber(ctx, field)
+			case "inactive":
+				return ec.fieldContext_BankAccount_inactive(ctx, field)
 			case "account":
 				return ec.fieldContext_BankAccount_account(ctx, field)
 			}
@@ -5268,10 +5268,10 @@ func (ec *executionContext) fieldContext_Mutation_storeBankAccount(ctx context.C
 				return ec.fieldContext_BankAccount_accountID(ctx, field)
 			case "type":
 				return ec.fieldContext_BankAccount_type(ctx, field)
-			case "BankNumber":
-				return ec.fieldContext_BankAccount_BankNumber(ctx, field)
-			case "Inactive":
-				return ec.fieldContext_BankAccount_Inactive(ctx, field)
+			case "bankNumber":
+				return ec.fieldContext_BankAccount_bankNumber(ctx, field)
+			case "inactive":
+				return ec.fieldContext_BankAccount_inactive(ctx, field)
 			case "account":
 				return ec.fieldContext_BankAccount_account(ctx, field)
 			}
@@ -5357,10 +5357,10 @@ func (ec *executionContext) fieldContext_Mutation_updateBankAccountByID(ctx cont
 				return ec.fieldContext_BankAccount_accountID(ctx, field)
 			case "type":
 				return ec.fieldContext_BankAccount_type(ctx, field)
-			case "BankNumber":
-				return ec.fieldContext_BankAccount_BankNumber(ctx, field)
-			case "Inactive":
-				return ec.fieldContext_BankAccount_Inactive(ctx, field)
+			case "bankNumber":
+				return ec.fieldContext_BankAccount_bankNumber(ctx, field)
+			case "inactive":
+				return ec.fieldContext_BankAccount_inactive(ctx, field)
 			case "account":
 				return ec.fieldContext_BankAccount_account(ctx, field)
 			}
@@ -7023,10 +7023,10 @@ func (ec *executionContext) fieldContext_Query_bankAccount(ctx context.Context, 
 				return ec.fieldContext_BankAccount_accountID(ctx, field)
 			case "type":
 				return ec.fieldContext_BankAccount_type(ctx, field)
-			case "BankNumber":
-				return ec.fieldContext_BankAccount_BankNumber(ctx, field)
-			case "Inactive":
-				return ec.fieldContext_BankAccount_Inactive(ctx, field)
+			case "bankNumber":
+				return ec.fieldContext_BankAccount_bankNumber(ctx, field)
+			case "inactive":
+				return ec.fieldContext_BankAccount_inactive(ctx, field)
 			case "account":
 				return ec.fieldContext_BankAccount_account(ctx, field)
 			}
@@ -10417,13 +10417,13 @@ func (ec *executionContext) _BankAccount(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-		case "BankNumber":
+		case "bankNumber":
 
-			out.Values[i] = ec._BankAccount_BankNumber(ctx, field, obj)
+			out.Values[i] = ec._BankAccount_bankNumber(ctx, field, obj)
 
-		case "Inactive":
+		case "inactive":
 
-			out.Values[i] = ec._BankAccount_Inactive(ctx, field, obj)
+			out.Values[i] = ec._BankAccount_inactive(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)

@@ -195,8 +195,8 @@ type BankAccount {
     id: ID!
     accountID: ID!
     type: Int!
-    BankNumber: String
-    Inactive: Boolean!
+    bankNumber: String
+    inactive: Boolean!
     account: Account!
 }
 
