@@ -4,8 +4,8 @@ import "database/sql"
 
 type BankAccount struct {
 	ID         int64
-	AccountID  int64 `db:"account_id"`
-	TypeID     int64 `db:"type_id"`
-	BankNumber sql.NullString
+	AccountID  int64          `db:"account_id"`
+	TypeID     int64          `db:"type_id"`
+	BankNumber sql.NullString `db:"bank_number"`
 	Inactive   bool
 }

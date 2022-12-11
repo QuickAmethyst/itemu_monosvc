@@ -52,7 +52,7 @@ func (w *writer) StoreBankAccount(ctx context.Context, bankAccount *domain.BankA
 	err = w.db.QueryRowContext(
 		ctx,
 		w.db.Rebind(query),
-		bankAccount.ID, bankAccount.AccountID, bankAccount.TypeID, bankAccount.BankNumber,
+		bankAccount.AccountID, bankAccount.TypeID, bankAccount.BankNumber,
 	).Scan(&bankAccount.ID)
 
 	if err != nil {
