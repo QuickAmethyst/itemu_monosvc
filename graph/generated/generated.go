@@ -1394,8 +1394,8 @@ scalar Time`, BuiltIn: false},
 type Mutation
 
 input PagingInput {
-  currentPage: Uint!
-  pageSize: Uint!
+  currentPage: Uint
+  pageSize: Uint
 }
 
 type Paging {
@@ -9606,7 +9606,7 @@ func (ec *executionContext) unmarshalInputPagingInput(ctx context.Context, obj i
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currentPage"))
-			it.CurrentPage, err = ec.unmarshalNUint2uint(ctx, v)
+			it.CurrentPage, err = ec.unmarshalOUint2uint(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -9614,7 +9614,7 @@ func (ec *executionContext) unmarshalInputPagingInput(ctx context.Context, obj i
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pageSize"))
-			it.PageSize, err = ec.unmarshalNUint2uint(ctx, v)
+			it.PageSize, err = ec.unmarshalOUint2uint(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -13118,6 +13118,16 @@ func (ec *executionContext) unmarshalOTime2timeᚐTime(ctx context.Context, v in
 
 func (ec *executionContext) marshalOTime2timeᚐTime(ctx context.Context, sel ast.SelectionSet, v time.Time) graphql.Marshaler {
 	res := graphql.MarshalTime(v)
+	return res
+}
+
+func (ec *executionContext) unmarshalOUint2uint(ctx context.Context, v interface{}) (uint, error) {
+	res, err := graphql.UnmarshalUint(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOUint2uint(ctx context.Context, sel ast.SelectionSet, v uint) graphql.Marshaler {
+	res := graphql.MarshalUint(v)
 	return res
 }
 

@@ -2,8 +2,8 @@ type Query
 type Mutation
 
 input PagingInput {
-  currentPage: Uint!
-  pageSize: Uint!
+  currentPage: Uint
+  pageSize: Uint
 }
 
 type Paging {
