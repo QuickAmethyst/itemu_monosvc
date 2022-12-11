@@ -180,8 +180,8 @@ type BankAccount struct {
 	ID         int64  `json:"id"`
 	AccountID  int64  `json:"accountID"`
 	TypeID     int64  `json:"typeID"`
-	BankNumber string `json:"BankNumber"`
-	Inactive   bool   `json:"Inactive"`
+	BankNumber string `json:"bankNumber"`
+	Inactive   bool   `json:"inactive"`
 }
 
 type WriteBankAccountInput struct {

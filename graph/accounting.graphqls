@@ -122,7 +122,7 @@ input WriteAccountClassInput {
 
 input WriteBankAccountInput {
     accountID: Int!
-    type: Int!
+    typeID: Int!
     bankNumber: String
     inactive: Boolean
 }
@@ -199,6 +199,7 @@ type BankAccount {
     bankNumber: String
     inactive: Boolean!
     account: Account!
+    type: BankAccountType!
 }
 
 type BankAccountType {

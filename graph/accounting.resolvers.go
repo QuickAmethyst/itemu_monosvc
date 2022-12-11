@@ -5,8 +5,6 @@ package graph
 
 import (
 	"context"
-	"fmt"
-
 	"github.com/QuickAmethyst/monosvc/graph/generated"
 	"github.com/QuickAmethyst/monosvc/graph/model"
 	"github.com/QuickAmethyst/monosvc/module/accounting/domain"
@@ -131,6 +129,25 @@ func (r *bankAccountResolver) Account(ctx context.Context, obj *model.BankAccoun
 		GroupID:  account.GroupID,
 		Inactive: account.Inactive,
 	}, nil
+}
+
+// Type is the resolver for the type field.
+func (r *bankAccountResolver) Type(ctx context.Context, obj *model.BankAccount) (*model.BankAccountType, error) {
+	if obj == nil || obj.TypeID <= 0 {
+		return nil, nil
+	}
+
+	var result = new(model.BankAccountType)
+	bankAccountTypes := r.AccountingUsecase.GetAllBankAccountTypes(ctx)
+	for _, bankAccountType := range bankAccountTypes {
+		if bankAccountType.ID == obj.TypeID {
+			result.ID = bankAccountType.ID
+			result.Name = bankAccountType.Name
+			return result, nil
+		}
+	}
+
+	return nil, nil
 }
 
 // Account is the resolver for the account field.
@@ -713,11 +730,6 @@ func (r *queryResolver) BankAccount(ctx context.Context, input model.BankAccount
 	}, nil
 }
 
-// Type is the resolver for the type field.
-func (r *writeBankAccountInputResolver) Type(ctx context.Context, obj *model.WriteBankAccountInput, data int) error {
-	panic(fmt.Errorf("not implemented"))
-}
-
 // Account returns generated.AccountResolver implementation.
 func (r *Resolver) Account() generated.AccountResolver { return &accountResolver{r} }
 
@@ -735,14 +747,8 @@ func (r *Resolver) GeneralLedgerPreference() generated.GeneralLedgerPreferenceRe
 	return &generalLedgerPreferenceResolver{r}
 }
 
-// WriteBankAccountInput returns generated.WriteBankAccountInputResolver implementation.
-func (r *Resolver) WriteBankAccountInput() generated.WriteBankAccountInputResolver {
-	return &writeBankAccountInputResolver{r}
-}
-
 type accountResolver struct{ *Resolver }
 type accountClassResolver struct{ *Resolver }
 type accountGroupResolver struct{ *Resolver }
 type bankAccountResolver struct{ *Resolver }
 type generalLedgerPreferenceResolver struct{ *Resolver }
-type writeBankAccountInputResolver struct{ *Resolver }
