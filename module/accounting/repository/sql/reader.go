@@ -26,6 +26,7 @@ type Reader interface {
 	GetAllAccounts(ctx context.Context, stmt AccountStatement) (result []domain.Account, err error)
 	GetAccount(ctx context.Context, stmt AccountStatement) (account domain.Account, err error)
 	GetAccountByID(ctx context.Context, id int64) (account domain.Account, err error)
+	AccountHasTransaction(ctx context.Context, id int64) (hasTransaction bool, err error)
 
 	ValidatePreferences(ctx context.Context, preferences []domain.GeneralLedgerPreference) (err error)
 	GetAllGeneralLedgerPreferences(ctx context.Context, stmt GeneralLedgerPreferenceStatement) (preferences []domain.GeneralLedgerPreference, err error)
@@ -40,10 +41,42 @@ type Reader interface {
 	GetAllBankAccountTypes(ctx context.Context) (bankAccountTypes []domain.BankAccountType)
 	GetBankAccountList(ctx context.Context, stmt BankAccountStatement, p qb.Paging) (result []domain.BankAccount, paging qb.Paging, err error)
 	GetBankAccount(ctx context.Context, stmt BankAccountStatement) (bankAccount domain.BankAccount, err error)
+
+	GetGeneralLedger(ctx context.Context, stmt GeneralLedgerStatement) (generalLedger domain.GeneralLedger, err error)
 }
 
 type reader struct {
 	db sql.DB
+}
+
+func (r *reader) AccountHasTransaction(ctx context.Context, id int64) (hasTransaction bool, err error) {
+	gl, err := r.GetGeneralLedger(ctx, GeneralLedgerStatement{AccountID: id})
+	if err != nil && err != sql.ErrNoRows {
+		return
+	}
+
+	if accountHasTransaction := gl.AccountID == id; accountHasTransaction {
+		hasTransaction = true
+		return
+	}
+
+	return
+}
+
+func (r *reader) GetGeneralLedger(ctx context.Context, stmt GeneralLedgerStatement) (generalLedger domain.GeneralLedger, err error) {
+	whereClause, whereClauseArgs, err := qb.NewWhereClause(stmt)
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetGeneralLedgerFailed, "Failed on get general ledger")
+		return
+	}
+
+	query := fmt.Sprintf("SELECT id, journal_id, account_id, amount, created_by FROM general_ledgers %s", whereClause)
+	if err = r.db.GetContext(ctx, &generalLedger, r.db.Rebind(query), whereClauseArgs...); err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetGeneralLedgerFailed, "Failed on get general ledger")
+		return
+	}
+
+	return
 }
 
 func (r *reader) GetAllBankAccountTypes(ctx context.Context) (bankAccountTypes []domain.BankAccountType) {

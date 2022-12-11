@@ -35,3 +35,7 @@ type FiscalYearStatement struct {
 type BankAccountStatement struct {
 	ID int64
 }
+
+type GeneralLedgerStatement struct {
+	AccountID int64
+}

@@ -41,4 +41,6 @@ const (
 	EcodeUpdateBankAccountFailed
 	EcodeGetBankAccountListFailed
 	EcodeGetBankAccountFailed
+	EcodeGetGeneralLedgerFailed
+	EcodeAccountHasTransaction
 )

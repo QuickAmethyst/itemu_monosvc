@@ -12,7 +12,7 @@ VALUES (1, 'Cash Account'),
 CREATE TABLE IF NOT EXISTS bank_accounts
 (
     id          SERIAL PRIMARY KEY,
-    account_id  int NOT NULL,
+    account_id  int UNIQUE NOT NULL,
     type_id     int NOT NULL,
     bank_number text,
     inactive    BOOLEAN DEFAULT FALSE,
