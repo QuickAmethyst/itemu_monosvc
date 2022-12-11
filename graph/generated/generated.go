@@ -181,7 +181,7 @@ type ComplexityRoot struct {
 		Accounts                 func(childComplexity int, input *model.AccountInput) int
 		BankAccount              func(childComplexity int, input model.BankAccountInput) int
 		BankAccountTypes         func(childComplexity int) int
-		BankAccounts             func(childComplexity int, input model.BankAccountsInput) int
+		BankAccounts             func(childComplexity int, input *model.BankAccountsInput) int
 		FiscalYears              func(childComplexity int, input *model.FiscalYearsInput) int
 		GeneralLedgerPreferences func(childComplexity int, input *model.GeneralLedgerPreferenceInput) int
 		Uoms                     func(childComplexity int, input *model.UomsInput) int
@@ -251,7 +251,7 @@ type QueryResolver interface {
 	GeneralLedgerPreferences(ctx context.Context, input *model.GeneralLedgerPreferenceInput) ([]*model.GeneralLedgerPreference, error)
 	FiscalYears(ctx context.Context, input *model.FiscalYearsInput) (*model.FiscalYearsResult, error)
 	BankAccountTypes(ctx context.Context) (*model.BankAccountTypesResult, error)
-	BankAccounts(ctx context.Context, input model.BankAccountsInput) (*model.BankAccountsResult, error)
+	BankAccounts(ctx context.Context, input *model.BankAccountsInput) (*model.BankAccountsResult, error)
 	BankAccount(ctx context.Context, input model.BankAccountInput) (*model.BankAccount, error)
 	Uoms(ctx context.Context, input *model.UomsInput) (*model.UomsResult, error)
 }
@@ -978,7 +978,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.BankAccounts(childComplexity, args["input"].(model.BankAccountsInput)), true
+		return e.complexity.Query.BankAccounts(childComplexity, args["input"].(*model.BankAccountsInput)), true
 
 	case "Query.fiscalYears":
 		if e.complexity.Query.FiscalYears == nil {
@@ -1165,7 +1165,7 @@ var sources = []*ast.Source{
     fiscalYears(input: FiscalYearsInput): FiscalYearsResult! @authenticated
 
     bankAccountTypes: BankAccountTypesResult! @authenticated
-    bankAccounts(input: BankAccountsInput!): BankAccountsResult! @authenticated
+    bankAccounts(input: BankAccountsInput): BankAccountsResult! @authenticated
     bankAccount(input: BankAccountInput!): BankAccount! @authenticated
 }
 
@@ -1890,10 +1890,10 @@ func (ec *executionContext) field_Query_bankAccount_args(ctx context.Context, ra
 func (ec *executionContext) field_Query_bankAccounts_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 model.BankAccountsInput
+	var arg0 *model.BankAccountsInput
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-		arg0, err = ec.unmarshalNBankAccountsInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountsInput(ctx, tmp)
+		arg0, err = ec.unmarshalOBankAccountsInput2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountsInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -6893,7 +6893,7 @@ func (ec *executionContext) _Query_bankAccounts(ctx context.Context, field graph
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		directive0 := func(rctx context.Context) (interface{}, error) {
 			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.Query().BankAccounts(rctx, fc.Args["input"].(model.BankAccountsInput))
+			return ec.resolvers.Query().BankAccounts(rctx, fc.Args["input"].(*model.BankAccountsInput))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
 			if ec.directives.Authenticated == nil {
@@ -12197,11 +12197,6 @@ func (ec *executionContext) marshalNBankAccountTypesResult2ᚖgithubᚗcomᚋQui
 	return ec._BankAccountTypesResult(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNBankAccountsInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountsInput(ctx context.Context, v interface{}) (model.BankAccountsInput, error) {
-	res, err := ec.unmarshalInputBankAccountsInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
 func (ec *executionContext) marshalNBankAccountsResult2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountsResult(ctx context.Context, sel ast.SelectionSet, v model.BankAccountsResult) graphql.Marshaler {
 	return ec._BankAccountsResult(ctx, sel, &v)
 }
@@ -12955,6 +12950,14 @@ func (ec *executionContext) unmarshalOAccountInput2ᚖgithubᚗcomᚋQuickAmethy
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputAccountInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOBankAccountsInput2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐBankAccountsInput(ctx context.Context, v interface{}) (*model.BankAccountsInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputBankAccountsInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 

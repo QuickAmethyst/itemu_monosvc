@@ -663,7 +663,7 @@ func (r *queryResolver) BankAccountTypes(ctx context.Context) (*model.BankAccoun
 }
 
 // BankAccounts is the resolver for the bankAccounts field.
-func (r *queryResolver) BankAccounts(ctx context.Context, input model.BankAccountsInput) (*model.BankAccountsResult, error) {
+func (r *queryResolver) BankAccounts(ctx context.Context, input *model.BankAccountsInput) (*model.BankAccountsResult, error) {
 	bankAccounts, paging, err := r.AccountingUsecase.GetBankAccountList(ctx, sql.BankAccountStatement{ID: input.Scope.ID}, qb.Paging{
 		CurrentPage: input.Paging.CurrentPage,
 		PageSize:    input.Paging.PageSize,

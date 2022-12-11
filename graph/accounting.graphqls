@@ -16,7 +16,7 @@ extend type Query {
     fiscalYears(input: FiscalYearsInput): FiscalYearsResult! @authenticated
 
     bankAccountTypes: BankAccountTypesResult! @authenticated
-    bankAccounts(input: BankAccountsInput!): BankAccountsResult! @authenticated
+    bankAccounts(input: BankAccountsInput): BankAccountsResult! @authenticated
     bankAccount(input: BankAccountInput!): BankAccount! @authenticated
 }
 
