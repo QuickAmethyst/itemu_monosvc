@@ -48,11 +48,11 @@ type writer struct {
 
 func (w *writer) StoreBankAccount(ctx context.Context, bankAccount *domain.BankAccount) (err error) {
 	// TODO: Validate account id is not already used in bank account and must has any transaction
-	query := "INSERT INTO bank_accounts (account_id, type, bank_number) VALUES (?, ?, ?) RETURNING id"
+	query := "INSERT INTO bank_accounts (account_id, type_id, bank_number) VALUES (?, ?, ?) RETURNING id"
 	err = w.db.QueryRowContext(
 		ctx,
 		w.db.Rebind(query),
-		bankAccount.ID, bankAccount.AccountID, bankAccount.Type, bankAccount.BankNumber,
+		bankAccount.ID, bankAccount.AccountID, bankAccount.TypeID, bankAccount.BankNumber,
 	).Scan(&bankAccount.ID)
 
 	if err != nil {
@@ -410,7 +410,7 @@ func (w *writer) StoreJournalTx(tx sql.Tx, ctx context.Context, journal *domain.
 func (w *writer) StoreGeneralLedgersTx(tx sql.Tx, ctx context.Context, gls []domain.GeneralLedger) (err error) {
 	var params []interface{}
 
-	query := `Insert INTO general_ledgers (id, journal_id, account_id, amount, created_by) VALUES `
+	query := `INSERT INTO general_ledgers (id, journal_id, account_id, amount, created_by) VALUES `
 
 	for _, gl := range gls {
 		query += "(?,?,?,?,?),"

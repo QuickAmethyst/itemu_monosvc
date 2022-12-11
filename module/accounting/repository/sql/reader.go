@@ -79,7 +79,7 @@ func (r *reader) GetBankAccountList(ctx context.Context, stmt BankAccountStateme
 		return
 	}
 
-	selectQuery := fmt.Sprintf("SELECT id, account_id, type, bank_number, inactive %s %s %s", fromClause, whereClause, limitClause)
+	selectQuery := fmt.Sprintf("SELECT id, account_id, type_id, bank_number, inactive %s %s %s", fromClause, whereClause, limitClause)
 	if err = r.db.SelectContext(ctx, &result, r.db.Rebind(selectQuery), append(whereClauseArgs, limitClauseArgs...)...); err != nil {
 		err = errors.PropagateWithCode(err, EcodeGetBankAccountListFailed, "Failed on get bank account list")
 		return
@@ -101,7 +101,7 @@ func (r *reader) GetBankAccount(ctx context.Context, stmt BankAccountStatement) 
 		return
 	}
 
-	query := fmt.Sprintf("SELECT id, account_id, type, bank_number, inactive FROM bank_accounts %s ORDER BY id ASC", whereClause)
+	query := fmt.Sprintf("SELECT id, account_id, type_id, bank_number, inactive FROM bank_accounts %s ORDER BY id ASC", whereClause)
 	if err = r.db.GetContext(ctx, &bankAccount, r.db.Rebind(query), whereClauseArgs...); err != nil {
 		err = errors.PropagateWithCode(err, EcodeGetBankAccountFailed, "Failed on get bank account")
 		return
@@ -224,7 +224,7 @@ func (r *reader) GetAllAccounts(ctx context.Context, stmt AccountStatement) (res
 	}
 
 	if strings.HasSuffix(query, "AND") && whereClause == "" {
-		query = query[:len(query) - 4]
+		query = query[:len(query)-4]
 	} else {
 		query += " " + whereClause
 	}

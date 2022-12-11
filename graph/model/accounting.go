@@ -179,21 +179,21 @@ type FiscalYearsResult struct {
 type BankAccount struct {
 	ID         int64  `json:"id"`
 	AccountID  int64  `json:"accountID"`
-	Type       int64  `json:"type"`
+	TypeID     int64  `json:"typeID"`
 	BankNumber string `json:"BankNumber"`
 	Inactive   bool   `json:"Inactive"`
 }
 
 type WriteBankAccountInput struct {
 	AccountID  int64  `json:"accountID"`
-	Type       int64  `json:"type"`
+	TypeID     int64  `json:"typeID"`
 	BankNumber string `json:"bankNumber"`
 	Inactive   bool   `json:"inactive"`
 }
 
 func (w *WriteBankAccountInput) Domain() (bankAccount domain.BankAccount, err error) {
 	bankAccount.AccountID = w.AccountID
-	bankAccount.Type = w.Type
+	bankAccount.TypeID = w.TypeID
 	bankAccount.Inactive = w.Inactive
 
 	if w.BankNumber != "" {

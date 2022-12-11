@@ -195,7 +195,7 @@ type FiscalYearsResult {
 type BankAccount {
     id: ID!
     accountID: ID!
-    type: Int!
+    typeID: ID!
     bankNumber: String
     inactive: Boolean!
     account: Account!

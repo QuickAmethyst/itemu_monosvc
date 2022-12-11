@@ -44,6 +44,7 @@ type ResolverRoot interface {
 	GeneralLedgerPreference() GeneralLedgerPreferenceResolver
 	Mutation() MutationResolver
 	Query() QueryResolver
+	WriteBankAccountInput() WriteBankAccountInputResolver
 }
 
 type DirectiveRoot struct {
@@ -93,7 +94,7 @@ type ComplexityRoot struct {
 		BankNumber func(childComplexity int) int
 		ID         func(childComplexity int) int
 		Inactive   func(childComplexity int) int
-		Type       func(childComplexity int) int
+		TypeID     func(childComplexity int) int
 	}
 
 	BankAccountType struct {
@@ -254,6 +255,10 @@ type QueryResolver interface {
 	BankAccounts(ctx context.Context, input *model.BankAccountsInput) (*model.BankAccountsResult, error)
 	BankAccount(ctx context.Context, input model.BankAccountInput) (*model.BankAccount, error)
 	Uoms(ctx context.Context, input *model.UomsInput) (*model.UomsResult, error)
+}
+
+type WriteBankAccountInputResolver interface {
+	Type(ctx context.Context, obj *model.WriteBankAccountInput, data int) error
 }
 
 type executableSchema struct {
@@ -453,12 +458,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.BankAccount.Inactive(childComplexity), true
 
-	case "BankAccount.type":
-		if e.complexity.BankAccount.Type == nil {
+	case "BankAccount.typeID":
+		if e.complexity.BankAccount.TypeID == nil {
 			break
 		}
 
-		return e.complexity.BankAccount.Type(childComplexity), true
+		return e.complexity.BankAccount.TypeID(childComplexity), true
 
 	case "BankAccountType.id":
 		if e.complexity.BankAccountType.ID == nil {
@@ -1344,7 +1349,7 @@ type FiscalYearsResult {
 type BankAccount {
     id: ID!
     accountID: ID!
-    type: Int!
+    typeID: ID!
     bankNumber: String
     inactive: Boolean!
     account: Account!
@@ -3066,8 +3071,8 @@ func (ec *executionContext) fieldContext_BankAccount_accountID(ctx context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _BankAccount_type(ctx context.Context, field graphql.CollectedField, obj *model.BankAccount) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_BankAccount_type(ctx, field)
+func (ec *executionContext) _BankAccount_typeID(ctx context.Context, field graphql.CollectedField, obj *model.BankAccount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BankAccount_typeID(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -3080,7 +3085,7 @@ func (ec *executionContext) _BankAccount_type(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Type, nil
+		return obj.TypeID, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3094,17 +3099,17 @@ func (ec *executionContext) _BankAccount_type(ctx context.Context, field graphql
 	}
 	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNInt2int64(ctx, field.Selections, res)
+	return ec.marshalNID2int64(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_BankAccount_type(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_BankAccount_typeID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "BankAccount",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
+			return nil, errors.New("field of type ID does not have child fields")
 		},
 	}
 	return fc, nil
@@ -3432,8 +3437,8 @@ func (ec *executionContext) fieldContext_BankAccountsResult_data(ctx context.Con
 				return ec.fieldContext_BankAccount_id(ctx, field)
 			case "accountID":
 				return ec.fieldContext_BankAccount_accountID(ctx, field)
-			case "type":
-				return ec.fieldContext_BankAccount_type(ctx, field)
+			case "typeID":
+				return ec.fieldContext_BankAccount_typeID(ctx, field)
 			case "bankNumber":
 				return ec.fieldContext_BankAccount_bankNumber(ctx, field)
 			case "inactive":
@@ -5267,8 +5272,8 @@ func (ec *executionContext) fieldContext_Mutation_storeBankAccount(ctx context.C
 				return ec.fieldContext_BankAccount_id(ctx, field)
 			case "accountID":
 				return ec.fieldContext_BankAccount_accountID(ctx, field)
-			case "type":
-				return ec.fieldContext_BankAccount_type(ctx, field)
+			case "typeID":
+				return ec.fieldContext_BankAccount_typeID(ctx, field)
 			case "bankNumber":
 				return ec.fieldContext_BankAccount_bankNumber(ctx, field)
 			case "inactive":
@@ -5356,8 +5361,8 @@ func (ec *executionContext) fieldContext_Mutation_updateBankAccountByID(ctx cont
 				return ec.fieldContext_BankAccount_id(ctx, field)
 			case "accountID":
 				return ec.fieldContext_BankAccount_accountID(ctx, field)
-			case "type":
-				return ec.fieldContext_BankAccount_type(ctx, field)
+			case "typeID":
+				return ec.fieldContext_BankAccount_typeID(ctx, field)
 			case "bankNumber":
 				return ec.fieldContext_BankAccount_bankNumber(ctx, field)
 			case "inactive":
@@ -7022,8 +7027,8 @@ func (ec *executionContext) fieldContext_Query_bankAccount(ctx context.Context, 
 				return ec.fieldContext_BankAccount_id(ctx, field)
 			case "accountID":
 				return ec.fieldContext_BankAccount_accountID(ctx, field)
-			case "type":
-				return ec.fieldContext_BankAccount_type(ctx, field)
+			case "typeID":
+				return ec.fieldContext_BankAccount_typeID(ctx, field)
 			case "bankNumber":
 				return ec.fieldContext_BankAccount_bankNumber(ctx, field)
 			case "inactive":
@@ -9849,8 +9854,11 @@ func (ec *executionContext) unmarshalInputWriteBankAccountInput(ctx context.Cont
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
-			it.Type, err = ec.unmarshalNInt2int64(ctx, v)
+			data, err := ec.unmarshalNInt2int(ctx, v)
 			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.WriteBankAccountInput().Type(ctx, &it, data); err != nil {
 				return it, err
 			}
 		case "bankNumber":
@@ -10419,9 +10427,9 @@ func (ec *executionContext) _BankAccount(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-		case "type":
+		case "typeID":
 
-			out.Values[i] = ec._BankAccount_type(ctx, field, obj)
+			out.Values[i] = ec._BankAccount_typeID(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)

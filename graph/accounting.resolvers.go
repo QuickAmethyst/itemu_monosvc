@@ -5,6 +5,7 @@ package graph
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/QuickAmethyst/monosvc/graph/generated"
 	"github.com/QuickAmethyst/monosvc/graph/model"
@@ -373,7 +374,7 @@ func (r *mutationResolver) StoreBankAccount(ctx context.Context, input model.Wri
 	return &model.BankAccount{
 		ID:         bankAccount.ID,
 		AccountID:  bankAccount.AccountID,
-		Type:       bankAccount.Type,
+		TypeID:     bankAccount.TypeID,
 		BankNumber: bankAccount.BankNumber.String,
 		Inactive:   bankAccount.Inactive,
 	}, nil
@@ -395,7 +396,7 @@ func (r *mutationResolver) UpdateBankAccountByID(ctx context.Context, id int, in
 	return &model.BankAccount{
 		ID:         bankAccount.ID,
 		AccountID:  bankAccount.AccountID,
-		Type:       bankAccount.Type,
+		TypeID:     bankAccount.TypeID,
 		BankNumber: bankAccount.BankNumber.String,
 		Inactive:   bankAccount.Inactive,
 	}, nil
@@ -679,7 +680,7 @@ func (r *queryResolver) BankAccounts(ctx context.Context, input *model.BankAccou
 		data[i] = model.BankAccount{
 			ID:         bankAccount.ID,
 			AccountID:  bankAccount.AccountID,
-			Type:       bankAccount.Type,
+			TypeID:     bankAccount.TypeID,
 			BankNumber: bankAccount.BankNumber.String,
 			Inactive:   bankAccount.Inactive,
 		}
@@ -706,10 +707,15 @@ func (r *queryResolver) BankAccount(ctx context.Context, input model.BankAccount
 	return &model.BankAccount{
 		ID:         bankAccount.ID,
 		AccountID:  bankAccount.AccountID,
-		Type:       bankAccount.Type,
+		TypeID:     bankAccount.TypeID,
 		BankNumber: bankAccount.BankNumber.String,
 		Inactive:   bankAccount.Inactive,
 	}, nil
+}
+
+// Type is the resolver for the type field.
+func (r *writeBankAccountInputResolver) Type(ctx context.Context, obj *model.WriteBankAccountInput, data int) error {
+	panic(fmt.Errorf("not implemented"))
 }
 
 // Account returns generated.AccountResolver implementation.
@@ -729,8 +735,14 @@ func (r *Resolver) GeneralLedgerPreference() generated.GeneralLedgerPreferenceRe
 	return &generalLedgerPreferenceResolver{r}
 }
 
+// WriteBankAccountInput returns generated.WriteBankAccountInputResolver implementation.
+func (r *Resolver) WriteBankAccountInput() generated.WriteBankAccountInputResolver {
+	return &writeBankAccountInputResolver{r}
+}
+
 type accountResolver struct{ *Resolver }
 type accountClassResolver struct{ *Resolver }
 type accountGroupResolver struct{ *Resolver }
 type bankAccountResolver struct{ *Resolver }
 type generalLedgerPreferenceResolver struct{ *Resolver }
+type writeBankAccountInputResolver struct{ *Resolver }
