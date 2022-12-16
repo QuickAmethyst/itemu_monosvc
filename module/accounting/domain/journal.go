@@ -12,4 +12,5 @@ type Journal struct {
 	CreatedAt time.Time
 	TransDate time.Time
 	Memo      sql.NullString
+	DeletedAt time.Time
 }

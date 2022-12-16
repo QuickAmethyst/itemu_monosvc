@@ -1,2 +1,2 @@
 ALTER TABLE journals
-    DROP COLUMN memo;
+DROP COLUMN memo;

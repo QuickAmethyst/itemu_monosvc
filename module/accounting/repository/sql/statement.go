@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"github.com/google/uuid"
 	"time"
 )
 
@@ -38,4 +39,8 @@ type BankAccountStatement struct {
 
 type GeneralLedgerStatement struct {
 	AccountID int64
+}
+
+type JournalStatement struct {
+	ID uuid.UUID
 }

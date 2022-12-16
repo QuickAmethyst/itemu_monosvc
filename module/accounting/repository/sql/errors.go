@@ -43,4 +43,7 @@ const (
 	EcodeGetBankAccountFailed
 	EcodeGetGeneralLedgerFailed
 	EcodeAccountHasTransaction
+	EcodeGetJournalFailed
+	EcodeVoidTransactionByIDFailed
+	EcodeJournalAlreadyClosed
 )

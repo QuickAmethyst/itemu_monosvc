@@ -29,6 +29,8 @@ type Writer interface {
 
 	StoreTransaction(ctx context.Context, userID uuid.UUID, transactions Transaction) (journal *domain.Journal, err error)
 	StoreTransactionTx(tx sql.Tx, ctx context.Context, userID uuid.UUID, transaction Transaction) (journal *domain.Journal, err error)
+	VoidTransactionByID(ctx context.Context, journalID uuid.UUID) (err error)
+	VoidTransactionByIDTx(tx sql.Tx, ctx context.Context, journalID uuid.UUID) (err error)
 
 	UpdateGeneralLedgerPreferenceByID(ctx context.Context, id int64, preference *domain.GeneralLedgerPreference) (err error)
 	UpdateGeneralLedgerPreferences(ctx context.Context, preferences []domain.GeneralLedgerPreference) (err error)
@@ -44,6 +46,53 @@ type writer struct {
 	logger logger.Logger
 	db     sql.DB
 	reader Reader
+}
+
+func (w *writer) VoidTransactionByID(ctx context.Context, journalID uuid.UUID) (err error) {
+	err = w.db.Transaction(ctx, nil, func(tx sql.Tx) error {
+		err = w.VoidTransactionByIDTx(tx, ctx, journalID)
+		if err != nil {
+			err = errors.PropagateWithCode(err, EcodeVoidTransactionByIDFailed, "Failed on void transaction")
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeVoidTransactionByIDFailed, "Failed on void transaction")
+		return err
+	}
+
+	return
+}
+
+func (w *writer) VoidTransactionByIDTx(tx sql.Tx, ctx context.Context, journalID uuid.UUID) (err error) {
+	journal, err := w.reader.GetJournalByID(ctx, journalID)
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeVoidTransactionByIDFailed, "Failed on get journal by id")
+		return
+	}
+
+	activeFiscalYear, err := w.reader.GetActiveFiscalYear(ctx)
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeVoidTransactionByIDFailed, "Failed on get active fiscal year")
+		return
+	}
+
+	// check is journal closed
+	if journal.TransDate.Before(activeFiscalYear.StartDate) {
+		err = errors.PropagateWithCode(err, EcodeJournalAlreadyClosed, "Closing closed journal prohibited")
+		return
+	}
+
+	query := "UPDATE journals SET deleted_at = ? WHERE journal_id = ?"
+	if _, err = tx.ExecContext(ctx, tx.Rebind(query), time.Now(), journalID); err != nil {
+		err = errors.PropagateWithCode(err, EcodeVoidTransactionByIDFailed, "Failed on void transaction")
+		return
+	}
+
+	return
 }
 
 func (w *writer) StoreBankAccount(ctx context.Context, bankAccount *domain.BankAccount) (err error) {

@@ -7,6 +7,7 @@ import (
 	"github.com/QuickAmethyst/monosvc/stdlibgo/errors"
 	qb "github.com/QuickAmethyst/monosvc/stdlibgo/querybuilder/sql"
 	"github.com/QuickAmethyst/monosvc/stdlibgo/sql"
+	"github.com/google/uuid"
 	"strings"
 	"time"
 )
@@ -43,10 +44,32 @@ type Reader interface {
 	GetBankAccount(ctx context.Context, stmt BankAccountStatement) (bankAccount domain.BankAccount, err error)
 
 	GetGeneralLedger(ctx context.Context, stmt GeneralLedgerStatement) (generalLedger domain.GeneralLedger, err error)
+
+	GetJournalByID(ctx context.Context, id uuid.UUID) (journal domain.Journal, err error)
 }
 
 type reader struct {
 	db sql.DB
+}
+
+func (r *reader) GetJournalByID(ctx context.Context, id uuid.UUID) (journal domain.Journal, err error) {
+	return r.GetJournal(ctx, JournalStatement{ID: id})
+}
+
+func (r *reader) GetJournal(ctx context.Context, stmt JournalStatement) (journal domain.Journal, err error) {
+	whereClause, whereClauseArgs, err := qb.NewWhereClause(stmt)
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetJournalFailed, "Failed on get journal")
+		return
+	}
+
+	query := fmt.Sprintf("SELECT id, amount, created_at, trans_date, memo FROM journal %s", whereClause)
+	if err = r.db.GetContext(ctx, &journal, r.db.Rebind(query), whereClauseArgs...); err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetJournalFailed, "Failed on get journal")
+		return
+	}
+
+	return
 }
 
 func (r *reader) AccountHasTransaction(ctx context.Context, id int64) (hasTransaction bool, err error) {
