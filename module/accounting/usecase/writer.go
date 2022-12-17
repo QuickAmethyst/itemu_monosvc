@@ -26,6 +26,7 @@ type Writer interface {
 
 	StoreBankAccount(ctx context.Context, bankAccount *domain.BankAccount) (err error)
 	UpdateBankAccountByID(ctx context.Context, id int64, bankAccount *domain.BankAccount) (err error)
+	StoreBankDepositTransaction(ctx context.Context, userID uuid.UUID, transaction sql.BankTransaction) (bankTransaction domain.BankTransaction, err error)
 
 	StoreFiscalYear(ctx context.Context, fiscalYear *domain.FiscalYear) (err error)
 	CloseFiscalYear(ctx context.Context, id int64, userID uuid.UUID) (err error)
@@ -33,6 +34,10 @@ type Writer interface {
 
 type writer struct {
 	AccountingSQL sql.SQL
+}
+
+func (w *writer) StoreBankDepositTransaction(ctx context.Context, userID uuid.UUID, transaction sql.BankTransaction) (bankTransaction domain.BankTransaction, err error) {
+	return w.AccountingSQL.StoreBankDepositTransaction(ctx, userID, transaction)
 }
 
 func (w *writer) StoreBankAccount(ctx context.Context, bankAccount *domain.BankAccount) (err error) {

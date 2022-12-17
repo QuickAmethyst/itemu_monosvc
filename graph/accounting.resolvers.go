@@ -5,6 +5,7 @@ package graph
 
 import (
 	"context"
+
 	"github.com/QuickAmethyst/monosvc/graph/generated"
 	"github.com/QuickAmethyst/monosvc/graph/model"
 	"github.com/QuickAmethyst/monosvc/module/accounting/domain"
@@ -315,11 +316,11 @@ func (r *mutationResolver) StoreTransaction(ctx context.Context, input model.Wri
 	userID := appcontext.GetUserID(ctx)
 
 	transactions := make([]sql.TransactionRow, len(input.Data))
-	for _, item := range input.Data {
-		transactions = append(transactions, sql.TransactionRow{
+	for i, item := range input.Data {
+		transactions[i] = sql.TransactionRow{
 			AccountID: item.AccountID,
 			Amount:    item.Amount,
-		})
+		}
 	}
 
 	journal, err := r.AccountingUsecase.StoreTransaction(ctx, userID, sql.Transaction{
@@ -416,6 +417,41 @@ func (r *mutationResolver) UpdateBankAccountByID(ctx context.Context, id int, in
 		TypeID:     bankAccount.TypeID,
 		BankNumber: bankAccount.BankNumber.String,
 		Inactive:   bankAccount.Inactive,
+	}, nil
+}
+
+// StoreBankDepositTransaction is the resolver for the storeBankDepositTransaction field.
+func (r *mutationResolver) StoreBankDepositTransaction(ctx context.Context, input model.WriteBankTransactionInput) (*model.BankTransaction, error) {
+	userID := appcontext.GetUserID(ctx)
+
+	transactions := make([]sql.TransactionRow, len(input.Data))
+	for i, item := range input.Data {
+		transactions[i] = sql.TransactionRow{
+			AccountID: item.AccountID,
+			Amount:    item.Amount,
+		}
+	}
+
+	bankTransaction, err := r.AccountingUsecase.StoreBankDepositTransaction(ctx, userID, sql.BankTransaction{
+		BankAccountID: input.BankAccountID,
+		Transaction: sql.Transaction{
+			Date: input.TransDate,
+			Memo: input.Memo,
+			Data: transactions,
+		},
+	})
+
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, "Failed on store bank deposit transaction", libErr.GetCode(err))
+	}
+
+	return &model.BankTransaction{
+		ID:            bankTransaction.ID,
+		JournalID:     bankTransaction.JournalID.String(),
+		BankAccountID: bankTransaction.BankAccountID,
+		Amount:        bankTransaction.Amount,
+		CreatedAt:     bankTransaction.CreatedAt,
 	}, nil
 }
 

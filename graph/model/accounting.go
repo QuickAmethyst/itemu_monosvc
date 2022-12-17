@@ -231,3 +231,18 @@ type BankAccountsInput struct {
 	Scope  BankAccountsInputScope `json:"scope"`
 	Paging PagingInput            `json:"paging"`
 }
+
+type BankTransaction struct {
+	ID            int64     `json:"id"`
+	JournalID     string    `json:"journalID"`
+	BankAccountID int64     `json:"bankAccountID"`
+	Amount        float64   `json:"amount"`
+	CreatedAt     time.Time `json:"createdAt"`
+}
+
+type WriteBankTransactionInput struct {
+	BankAccountID int64                 `json:"bankAccountID"`
+	TransDate     time.Time             `json:"transDate"`
+	Memo          string                `json:"memo"`
+	Data          []WriteTransactionRow `json:"data"`
+}

@@ -65,8 +65,8 @@ func (w *writer) storeBankTransaction(ctx context.Context, userID uuid.UUID, tra
 		return
 	}
 
-	if transaction.JournalID == uuid.Nil {
-		transaction.JournalID = uuid.New()
+	if transaction.journalID == uuid.Nil {
+		transaction.journalID = uuid.New()
 	}
 
 	if transaction.Date.IsZero() {
@@ -120,7 +120,7 @@ func (w *writer) storeBankTransaction(ctx context.Context, userID uuid.UUID, tra
 		err = w.db.QueryRowContext(
 			ctx,
 			w.db.Rebind(query),
-			transaction.JournalID,
+			transaction.journalID,
 			transaction.BankAccountID,
 			totalAmount,
 			totalAmount,
@@ -478,8 +478,8 @@ func (w *writer) StoreTransactionTx(tx sql.Tx, ctx context.Context, userID uuid.
 		}
 	}
 
-	if transaction.JournalID == uuid.Nil {
-		transaction.JournalID = uuid.New()
+	if transaction.journalID == uuid.Nil {
+		transaction.journalID = uuid.New()
 	}
 
 	now := time.Now()
@@ -512,7 +512,7 @@ func (w *writer) StoreTransactionTx(tx sql.Tx, ctx context.Context, userID uuid.
 
 		gls = append(gls, domain.GeneralLedger{
 			ID:        uuid.New(),
-			JournalID: transaction.JournalID,
+			JournalID: transaction.journalID,
 			AccountID: row.AccountID,
 			CreatedBy: userID,
 			Amount:    row.Amount,
@@ -536,7 +536,7 @@ func (w *writer) StoreTransactionTx(tx sql.Tx, ctx context.Context, userID uuid.
 	}
 
 	journal = &domain.Journal{
-		ID:        transaction.JournalID,
+		ID:        transaction.journalID,
 		Amount:    journalAmount,
 		TransDate: transaction.Date,
 		Memo:      memo,

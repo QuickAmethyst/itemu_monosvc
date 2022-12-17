@@ -39,6 +39,7 @@ extend type Mutation {
 
     storeBankAccount(input: WriteBankAccountInput!): BankAccount! @authenticated
     updateBankAccountByID(id: Int!, input: WriteBankAccountInput!): BankAccount! @authenticated
+    storeBankDepositTransaction(input: WriteBankTransactionInput!): BankTransaction! @authenticated
 
     storeFiscalYear(input: WriteFiscalYearInput!): FiscalYear! @authenticated
     closeFiscalYear(id: Int!): Int! @authenticated
@@ -82,6 +83,13 @@ input WriteTransactionRow {
 }
 
 input WriteTransactionInput {
+    transDate: Time
+    memo: String
+    data: [WriteTransactionRow!]!
+}
+
+input WriteBankTransactionInput {
+    bankAccountID: Int!
     transDate: Time
     memo: String
     data: [WriteTransactionRow!]!
@@ -200,6 +208,14 @@ type BankAccount {
     inactive: Boolean!
     account: Account!
     type: BankAccountType!
+}
+
+type BankTransaction {
+    id: ID!
+    journalID: String!
+    bankAccountID: ID!
+    amount: Float!
+    createdAt: Time!
 }
 
 type BankAccountType {

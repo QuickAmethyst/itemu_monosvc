@@ -11,10 +11,10 @@ type TransactionRow struct {
 }
 
 type Transaction struct {
-	JournalID uuid.UUID
 	Date      time.Time
 	Memo      string
 	Data      []TransactionRow
+	journalID uuid.UUID
 }
 
 type BankTransaction struct {
