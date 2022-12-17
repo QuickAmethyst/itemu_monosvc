@@ -37,6 +37,7 @@ type Writer interface {
 
 	StoreBankAccount(ctx context.Context, bankAccount *domain.BankAccount) (err error)
 	UpdateBankAccountByID(ctx context.Context, id int64, bankAccount *domain.BankAccount) (err error)
+	StoreBankDepositTransaction(ctx context.Context, userID uuid.UUID, transaction BankTransaction) (bankTransaction domain.BankTransaction, err error)
 
 	StoreFiscalYear(ctx context.Context, fiscalYear *domain.FiscalYear) (err error)
 	CloseFiscalYear(ctx context.Context, id int64, userID uuid.UUID) (err error)
@@ -46,6 +47,112 @@ type writer struct {
 	logger logger.Logger
 	db     sql.DB
 	reader Reader
+}
+
+func (w *writer) storeBankTransaction(ctx context.Context, userID uuid.UUID, transaction BankTransaction) (bankTransaction domain.BankTransaction, err error) {
+	var (
+		totalAmount float64
+		bankAccount domain.BankAccount
+	)
+
+	if transaction.bankTransactionType < Deposit || transaction.bankTransactionType > Deposit {
+		err = errors.PropagateWithCode(fmt.Errorf("invalid bank transaction type"), EcodeBankTransactionTypeInvalid, "Invalid bank transaction type")
+		return
+	}
+
+	if userID == uuid.Nil {
+		err = errors.PropagateWithCode(fmt.Errorf("invalid user"), EcodeBankTransactionUserInvalid, "invalid user")
+		return
+	}
+
+	if transaction.JournalID == uuid.Nil {
+		transaction.JournalID = uuid.New()
+	}
+
+	if transaction.Date.IsZero() {
+		transaction.Date = time.Now()
+	}
+
+	for _, row := range transaction.Data {
+		var isBankAccount bool
+
+		if row.Amount <= 0 {
+			err = errors.PropagateWithCode(fmt.Errorf("amount must be greater than zero"), EcodeBankAccountDepositInvalidAmount, "Invalid bank account deposit amount")
+			return
+		}
+
+		isBankAccount, err = w.reader.IsBankAccount(ctx, row.AccountID)
+		if err != nil {
+			return
+		}
+
+		if isBankAccount {
+			err = errors.PropagateWithCode(err, EcodeBankAccountDepositInvalidAccount, "Bank account is prohibited")
+			return
+		}
+
+		totalAmount += row.Amount
+	}
+
+	bankAccount, err = w.reader.GetBankAccountByID(ctx, transaction.BankAccountID)
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetBankAccountFailed, "Failed on get bank account")
+		return
+	}
+
+	// post bank account to gl
+	transaction.Transaction.Data = append(transaction.Transaction.Data, TransactionRow{
+		AccountID: bankAccount.AccountID,
+		Amount:    totalAmount,
+	})
+
+	err = w.db.Transaction(ctx, nil, func(tx sql.Tx) error {
+		if _, err := w.StoreTransaction(ctx, userID, transaction.Transaction); err != nil {
+			err = errors.PropagateWithCode(err, EcodeStoreTransactionFailed, "Failed on store journal")
+			return err
+		}
+
+		query := `
+			INSERT INTO bank_transactions (journal_id, bank_account_id, amount, balance, memo, created_by, trans_date) VALUES
+			(?, ?, ?, (SELECT COALESCE((SELECT balance FROM test_insert GROUP BY id  ORDER BY id DESC LIMIT 1), 0) + ?), ?, ?, ?);
+		`
+
+		err = w.db.QueryRowContext(
+			ctx,
+			w.db.Rebind(query),
+			transaction.JournalID,
+			transaction.BankAccountID,
+			totalAmount,
+			totalAmount,
+			transaction.Memo,
+			userID,
+			transaction.Date,
+		).Scan(&bankTransaction.ID)
+		if err != nil {
+			err = errors.PropagateWithCode(err, EcodeStoreTransactionFailed, "Failed on store transaction")
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeStoreBankTransactionFailed, "Failed on store bank transaction")
+		return
+	}
+
+	return
+}
+
+func (w *writer) StoreBankDepositTransaction(ctx context.Context, userID uuid.UUID, transaction BankTransaction) (bankTransaction domain.BankTransaction, err error) {
+	transaction.bankTransactionType = Deposit
+
+	if bankTransaction, err = w.storeBankTransaction(ctx, userID, transaction); err != nil {
+		err = errors.PropagateWithCode(err, EcodeStoreBankAccountDepositFailed, "Failed on store bank account deposit")
+		return
+	}
+
+	return
 }
 
 func (w *writer) VoidTransactionByID(ctx context.Context, journalID uuid.UUID) (err error) {
@@ -364,15 +471,18 @@ func (w *writer) StoreTransactionTx(tx sql.Tx, ctx context.Context, userID uuid.
 		return
 	}
 
-	now := time.Now()
-	journalID := uuid.New()
-
 	if transaction.Memo != "" {
 		if err = memo.Scan(transaction.Memo); err != nil {
 			err = errors.PropagateWithCode(err, EcodeStoreTransactionFailed, "Failed on scan memo value")
 			return
 		}
 	}
+
+	if transaction.JournalID == uuid.Nil {
+		transaction.JournalID = uuid.New()
+	}
+
+	now := time.Now()
 
 	if transaction.Date.IsZero() {
 		transaction.Date = now
@@ -402,7 +512,7 @@ func (w *writer) StoreTransactionTx(tx sql.Tx, ctx context.Context, userID uuid.
 
 		gls = append(gls, domain.GeneralLedger{
 			ID:        uuid.New(),
-			JournalID: journalID,
+			JournalID: transaction.JournalID,
 			AccountID: row.AccountID,
 			CreatedBy: userID,
 			Amount:    row.Amount,
@@ -426,7 +536,7 @@ func (w *writer) StoreTransactionTx(tx sql.Tx, ctx context.Context, userID uuid.
 	}
 
 	journal = &domain.Journal{
-		ID:        journalID,
+		ID:        transaction.JournalID,
 		Amount:    journalAmount,
 		TransDate: transaction.Date,
 		Memo:      memo,

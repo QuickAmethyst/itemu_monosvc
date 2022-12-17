@@ -1,6 +1,9 @@
 package sql
 
-import "time"
+import (
+	"github.com/google/uuid"
+	"time"
+)
 
 type TransactionRow struct {
 	AccountID int64
@@ -8,7 +11,14 @@ type TransactionRow struct {
 }
 
 type Transaction struct {
-	Date time.Time
-	Memo string
-	Data []TransactionRow
+	JournalID uuid.UUID
+	Date      time.Time
+	Memo      string
+	Data      []TransactionRow
+}
+
+type BankTransaction struct {
+	BankAccountID       int64
+	bankTransactionType BankTransactionType
+	Transaction
 }

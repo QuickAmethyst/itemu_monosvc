@@ -46,4 +46,10 @@ const (
 	EcodeGetJournalFailed
 	EcodeVoidTransactionByIDFailed
 	EcodeJournalAlreadyClosed
+	EcodeStoreBankAccountDepositFailed
+	EcodeBankAccountDepositInvalidAmount
+	EcodeBankAccountDepositInvalidAccount
+	EcodeBankTransactionTypeInvalid
+	EcodeBankTransactionUserInvalid
+	EcodeStoreBankTransactionFailed
 )

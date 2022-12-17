@@ -42,6 +42,9 @@ type Reader interface {
 	GetAllBankAccountTypes(ctx context.Context) (bankAccountTypes []domain.BankAccountType)
 	GetBankAccountList(ctx context.Context, stmt BankAccountStatement, p qb.Paging) (result []domain.BankAccount, paging qb.Paging, err error)
 	GetBankAccount(ctx context.Context, stmt BankAccountStatement) (bankAccount domain.BankAccount, err error)
+	GetBankAccountByID(ctx context.Context, id int64) (bankAccount domain.BankAccount, err error)
+	IsBankAccount(ctx context.Context, accountID int64) (isBankAccount bool, err error)
+	GetBankAccountBalanceByID(ctx context.Context, id int64) (balance float64, err error)
 
 	GetGeneralLedger(ctx context.Context, stmt GeneralLedgerStatement) (generalLedger domain.GeneralLedger, err error)
 
@@ -50,6 +53,34 @@ type Reader interface {
 
 type reader struct {
 	db sql.DB
+}
+
+func (r *reader) GetBankAccountBalanceByID(ctx context.Context, id int64) (balance float64, err error) {
+	var bankTransaction domain.BankTransaction
+
+	query := "SELECT balance FROM bank_transactions WHERE bank_account_id = ? ORDER BY id DESC LIMIT 1"
+	if err = r.db.GetContext(ctx, &bankTransaction, query, id); err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetBankAccountFailed, "Failed on get bank account")
+		return
+	}
+
+	balance = bankTransaction.Balance
+
+	return
+}
+
+func (r *reader) IsBankAccount(ctx context.Context, accountID int64) (isBankAccount bool, err error) {
+	_, err = r.GetBankAccount(ctx, BankAccountStatement{AccountID: accountID})
+	if err != nil && err != sql.ErrNoRows {
+		err = errors.PropagateWithCode(err, EcodeGetBankAccountFailed, "Failed on get bank account")
+		return
+	}
+
+	return err == sql.ErrNoRows, nil
+}
+
+func (r *reader) GetBankAccountByID(ctx context.Context, id int64) (bankAccount domain.BankAccount, err error) {
+	return r.GetBankAccount(ctx, BankAccountStatement{ID: id})
 }
 
 func (r *reader) GetJournalByID(ctx context.Context, id uuid.UUID) (journal domain.Journal, err error) {
