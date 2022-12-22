@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS bank_transactions
 (
     id              SERIAL PRIMARY KEY,
-    journal_id      int                      NOT NULL,
+    journal_id      uuid                     NOT NULL,
     bank_account_id int                      NOT NULL,
     amount          numeric(18, 8)           NOT NULL DEFAULT 0,
     balance         numeric(18, 8)           NOT NULL DEFAULT 0,
