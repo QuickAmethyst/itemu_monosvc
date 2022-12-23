@@ -443,7 +443,7 @@ func (r *mutationResolver) StoreBankDepositTransaction(ctx context.Context, inpu
 
 	if err != nil {
 		r.Logger.Error(err.Error())
-		return nil, sdkGraphql.NewError(err, "Failed on store bank deposit transaction", libErr.GetCode(err))
+		return nil, sdkGraphql.NewError(err, libErr.RootCause(err).Error(), libErr.GetCode(err))
 	}
 
 	return &model.BankTransaction{

@@ -71,12 +71,12 @@ func (r *reader) GetBankAccountBalanceByID(ctx context.Context, id int64) (balan
 
 func (r *reader) IsBankAccount(ctx context.Context, accountID int64) (isBankAccount bool, err error) {
 	_, err = r.GetBankAccount(ctx, BankAccountStatement{AccountID: accountID})
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && errors.GetCode(err) != EcodeNotFound {
 		err = errors.PropagateWithCode(err, EcodeGetBankAccountFailed, "Failed on get bank account")
 		return
 	}
 
-	return err == sql.ErrNoRows, nil
+	return errors.GetCode(err) != EcodeNotFound, nil
 }
 
 func (r *reader) GetBankAccountByID(ctx context.Context, id int64) (bankAccount domain.BankAccount, err error) {
@@ -190,6 +190,11 @@ func (r *reader) GetBankAccount(ctx context.Context, stmt BankAccountStatement) 
 
 	query := fmt.Sprintf("SELECT id, account_id, type_id, bank_number, inactive FROM bank_accounts %s ORDER BY id ASC", whereClause)
 	if err = r.db.GetContext(ctx, &bankAccount, r.db.Rebind(query), whereClauseArgs...); err != nil {
+		if err == sql.ErrNoRows {
+			err = errors.PropagateWithCode(err, EcodeNotFound, "Failed on get bank account")
+			return
+		}
+
 		err = errors.PropagateWithCode(err, EcodeGetBankAccountFailed, "Failed on get bank account")
 		return
 	}
@@ -216,6 +221,11 @@ func (r *reader) GetGeneralLedgerPreferenceByID(ctx context.Context, stmt Genera
 func (r *reader) GetFiscalYear(ctx context.Context, statement FiscalYearStatement) (fiscalYear domain.FiscalYear, err error) {
 	whereClause, whereClauseArgs, err := qb.NewWhereClause(statement)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			err = errors.PropagateWithCode(err, EcodeNotFound, "Failed on get fiscal year")
+			return
+		}
+
 		err = errors.PropagateWithCode(err, EcodeGetFiscalYearFailed, "Failed on get fiscal year")
 		return
 	}

@@ -52,4 +52,5 @@ const (
 	EcodeBankTransactionTypeInvalid
 	EcodeBankTransactionUserInvalid
 	EcodeStoreBankTransactionFailed
+	EcodeNotFound
 )

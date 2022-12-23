@@ -73,7 +73,7 @@ func (w *writer) storeBankTransaction(ctx context.Context, userID uuid.UUID, tra
 		transaction.Date = time.Now()
 	}
 
-	for _, row := range transaction.Data {
+	for i, row := range transaction.Data {
 		var isBankAccount bool
 
 		if row.Amount <= 0 {
@@ -87,10 +87,11 @@ func (w *writer) storeBankTransaction(ctx context.Context, userID uuid.UUID, tra
 		}
 
 		if isBankAccount {
-			err = errors.PropagateWithCode(err, EcodeBankAccountDepositInvalidAccount, "Bank account is prohibited")
+			err = errors.PropagateWithCode(fmt.Errorf("bank account is prohibited"), EcodeBankAccountDepositInvalidAccount, "Bank account is prohibited")
 			return
 		}
 
+		transaction.Data[i].Amount = -transaction.Data[i].Amount
 		totalAmount += row.Amount
 	}
 
@@ -107,19 +108,20 @@ func (w *writer) storeBankTransaction(ctx context.Context, userID uuid.UUID, tra
 	})
 
 	err = w.db.Transaction(ctx, nil, func(tx sql.Tx) error {
-		if _, err := w.StoreTransaction(ctx, userID, transaction.Transaction); err != nil {
+		if _, err := w.StoreTransactionTx(tx, ctx, userID, transaction.Transaction); err != nil {
 			err = errors.PropagateWithCode(err, EcodeStoreTransactionFailed, "Failed on store journal")
 			return err
 		}
 
 		query := `
 			INSERT INTO bank_transactions (journal_id, bank_account_id, amount, balance, memo, created_by, trans_date) VALUES
-			(?, ?, ?, (SELECT COALESCE((SELECT balance FROM test_insert GROUP BY id  ORDER BY id DESC LIMIT 1), 0) + ?), ?, ?, ?);
+			(?, ?, ?, (SELECT COALESCE((SELECT balance FROM bank_transactions GROUP BY id ORDER BY id DESC LIMIT 1), 0) + ?), ?, ?, ?)
+			RETURNING id;
 		`
 
-		err = w.db.QueryRowContext(
+		err = tx.QueryRowContext(
 			ctx,
-			w.db.Rebind(query),
+			tx.Rebind(query),
 			transaction.journalID,
 			transaction.BankAccountID,
 			totalAmount,
@@ -148,7 +150,7 @@ func (w *writer) StoreBankDepositTransaction(ctx context.Context, userID uuid.UU
 	transaction.bankTransactionType = Deposit
 
 	if bankTransaction, err = w.storeBankTransaction(ctx, userID, transaction); err != nil {
-		err = errors.PropagateWithCode(err, EcodeStoreBankAccountDepositFailed, "Failed on store bank account deposit")
+		err = errors.PropagateWithCode(err, errors.GetCode(err), "Failed on store bank account deposit")
 		return
 	}
 
@@ -496,12 +498,12 @@ func (w *writer) StoreTransactionTx(tx sql.Tx, ctx context.Context, userID uuid.
 	})
 
 	if err != nil {
-		if err == sql.ErrNoRows {
+		err = errors.PropagateWithCode(err, EcodeGetFiscalYearFailed, "Failed on get fiscal year")
+
+		if errors.GetCode(err) == EcodeNotFound {
 			err = errors.PropagateWithCode(err, EcodeStoreTransactionProhibited, "No active fiscal year for transaction date")
-			return
 		}
 
-		err = errors.PropagateWithCode(err, EcodeGetFiscalYearFailed, "Failed on get fiscal year")
 		return
 	}
 

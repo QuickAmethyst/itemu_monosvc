@@ -20,6 +20,7 @@ const (
 var PropagateWithCode = stacktrace.PropagateWithCode
 var Propagate = stacktrace.Propagate
 var GetCode = stacktrace.GetCode
+var RootCause = stacktrace.RootCause
 
 type FieldError struct {
 	Field   string `json:"field"`
