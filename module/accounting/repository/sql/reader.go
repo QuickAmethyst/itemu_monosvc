@@ -76,7 +76,7 @@ func (r *reader) IsBankAccount(ctx context.Context, accountID int64) (isBankAcco
 		return
 	}
 
-	return err == sql.ErrNoRows, nil
+	return err != sql.ErrNoRows, nil
 }
 
 func (r *reader) GetBankAccountByID(ctx context.Context, id int64) (bankAccount domain.BankAccount, err error) {
