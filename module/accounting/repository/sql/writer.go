@@ -674,11 +674,6 @@ func (w *writer) StoreAccountGroup(ctx context.Context, accountGroup *domain.Acc
 			return
 		}
 
-		if parentAccountGroup.ParentID.Valid {
-			err = errors.PropagateWithCode(goErr.New("invalid parent id"), EcodeParentIDNotValid, "cannot set parent from another account group child")
-			return
-		}
-
 		accountGroup.ClassID = parentAccountGroup.ClassID
 	}
 
