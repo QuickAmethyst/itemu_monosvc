@@ -45,14 +45,56 @@ type Reader interface {
 	GetBankAccountByID(ctx context.Context, id int64) (bankAccount domain.BankAccount, err error)
 	IsBankAccount(ctx context.Context, accountID int64) (isBankAccount bool, err error)
 	GetBankAccountBalanceByID(ctx context.Context, id int64) (balance float64, err error)
+	GetAllBankTransactionsByJournalID(ctx context.Context, journalID uuid.UUID) (bankTransactions []domain.BankTransaction, err error)
 
 	GetGeneralLedger(ctx context.Context, stmt GeneralLedgerStatement) (generalLedger domain.GeneralLedger, err error)
+	GetAllGeneralLedgersByJournalID(ctx context.Context, journalID uuid.UUID) (gls []domain.GeneralLedger, err error)
 
 	GetJournalByID(ctx context.Context, id uuid.UUID) (journal domain.Journal, err error)
 }
 
 type reader struct {
 	db sql.DB
+}
+
+func (r *reader) GetAllBankTransactionsByJournalID(ctx context.Context, journalID uuid.UUID) (bankTransactions []domain.BankTransaction, err error) {
+	bankTransactions = make([]domain.BankTransaction, 0)
+
+	whereClause, whereClauseArgs, err := qb.NewWhereClause(BankTransactionStatement{JournalID: journalID})
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetAllBankTransactionsFailed, "Failed on build where clause")
+		return
+	}
+
+	query := fmt.Sprintf(`
+		SELECT id, journal_id, bank_account_id, user_id, amount, balance, created_at
+		FROM bank_transactions
+		WHERE %s
+	`, whereClause)
+
+	if err = r.db.SelectContext(ctx, &bankTransactions, query, whereClauseArgs...); err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetAllBankTransactionsFailed, "Failed on get bank transactions")
+		return
+	}
+
+	return
+}
+
+func (r *reader) GetAllGeneralLedgersByJournalID(ctx context.Context, journalID uuid.UUID) (gls []domain.GeneralLedger, err error) {
+	gls = make([]domain.GeneralLedger, 0)
+	whereClause, whereClauseArgs, err := qb.NewWhereClause(GeneralLedgerStatement{JournalID: journalID})
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetAllGeneralLedgersFailed, "Failed on build where clause")
+		return
+	}
+
+	query := fmt.Sprintf("SELECT id, journal_id, account_id, amount, created_by FROM general_ledgers WHERE %s", whereClause)
+	if err = r.db.SelectContext(ctx, &gls, r.db.Rebind(query), whereClauseArgs...); err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetAllGeneralLedgersFailed, "Failed on get general ledgers")
+		return
+	}
+
+	return
 }
 
 func (r *reader) GetBankAccountBalanceByID(ctx context.Context, id int64) (balance float64, err error) {

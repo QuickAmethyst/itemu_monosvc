@@ -177,21 +177,33 @@ func (w *writer) VoidTransactionByID(ctx context.Context, journalID uuid.UUID) (
 }
 
 func (w *writer) VoidTransactionByIDTx(tx sql.Tx, ctx context.Context, journalID uuid.UUID) (err error) {
-	journal, err := w.reader.GetJournalByID(ctx, journalID)
-	if err != nil {
-		err = errors.PropagateWithCode(err, EcodeVoidTransactionByIDFailed, "Failed on get journal by id")
-		return
-	}
-
 	activeFiscalYear, err := w.reader.GetActiveFiscalYear(ctx)
 	if err != nil {
 		err = errors.PropagateWithCode(err, EcodeVoidTransactionByIDFailed, "Failed on get active fiscal year")
 		return
 	}
 
+	journal, err := w.reader.GetJournalByID(ctx, journalID)
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeVoidTransactionByIDFailed, "Failed on get journal by id")
+		return
+	}
+
 	// check is journal closed
 	if journal.TransDate.Before(activeFiscalYear.StartDate) {
 		err = errors.PropagateWithCode(err, EcodeJournalAlreadyClosed, "Closing closed journal prohibited")
+		return
+	}
+
+	bankTransactions, err := w.reader.GetAllBankTransactionsByJournalID(ctx, journalID)
+	if err != nil {
+		err = errors.PropagateWithCode(err, EcodeVoidTransactionByIDFailed, "Failed on get bank transactions")
+		return
+	}
+
+	// prevent void bank transactions
+	if isBankTransaction := len(bankTransactions) > 0; isBankTransaction {
+		err = errors.PropagateWithCode(err, EcodeVoidBankTransactionProhibited, "Void bank transaction is prohibited")
 		return
 	}
 

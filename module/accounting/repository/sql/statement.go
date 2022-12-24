@@ -16,9 +16,8 @@ type AccountGroupStatement struct {
 }
 
 type AccountStatement struct {
-	ID                 int64
-	ClassType          int64 `qb:"-"`
-	ExcludeBankAccount int64 `qb:"-"`
+	ID        int64
+	ClassType int64 `qb:"-"`
 }
 
 type GeneralLedgerPreferenceStatement struct {
@@ -41,8 +40,13 @@ type BankAccountStatement struct {
 
 type GeneralLedgerStatement struct {
 	AccountID int64
+	JournalID uuid.UUID
 }
 
 type JournalStatement struct {
 	ID uuid.UUID
+}
+
+type BankTransactionStatement struct {
+	JournalID uuid.UUID
 }

@@ -53,4 +53,7 @@ const (
 	EcodeBankTransactionUserInvalid
 	EcodeStoreBankTransactionFailed
 	EcodeNotFound
+	EcodeGetAllGeneralLedgersFailed
+	EcodeGetAllBankTransactionsFailed
+	EcodeVoidBankTransactionProhibited
 )
