@@ -365,15 +365,32 @@ func (w *writer) updateFiscalYearByID(ctx context.Context, id int64, fiscalYear 
 }
 
 func (w *writer) StoreFiscalYear(ctx context.Context, fiscalYear *domain.FiscalYear) (err error) {
-	var intersectedFiscalYear domain.FiscalYear
+	var (
+		intersectedFiscalYear domain.FiscalYear
+		lastEndDate           time.Time
+	)
 
 	if fiscalYear.EndDate.Before(fiscalYear.StartDate) {
-		err = errors.PropagateWithCode(fmt.Errorf("invalid fiscal year date"), EcodeValidateFiscalYearFailed, "Fiscal year end date must after start date")
+		err = errors.PropagateWithCode(fmt.Errorf("invalid fiscal year end date"), EcodeValidateFiscalYearFailed, "Fiscal year end date must after start date")
+		return
+	}
+
+	query := "SELECT DATE(MAX(end_date)) FROM fiscal_years"
+	err = w.db.QueryRowContext(ctx, query).Scan(&lastEndDate)
+	if err != nil && err != sql.ErrNoRows {
+		err = errors.PropagateWithCode(err, EcodeStoreFiscalYearFailed, "Failed on get last end date")
+		return
+	}
+
+	// if there are fiscal year exists, check for start date validity
+	// the start date must equal last end date + one day
+	if err == nil && !fiscalYear.StartDate.Equal(lastEndDate.Add(24*time.Hour)) {
+		err = errors.PropagateWithCode(fmt.Errorf("invalid fiscal year start date"), EcodeValidateFiscalYearFailed, "Fiscal year start date is invalid")
 		return
 	}
 
 	args := []interface{}{fiscalYear.StartDate, fiscalYear.StartDate, fiscalYear.EndDate, fiscalYear.EndDate}
-	query := `
+	query = `
 		SELECT id, start_date, end_date, closed
 		FROM fiscal_years
 		WHERE (start_date <= ? AND end_date >= ?) OR (start_date >= ? AND end_date <= ?)
@@ -390,7 +407,7 @@ func (w *writer) StoreFiscalYear(ctx context.Context, fiscalYear *domain.FiscalY
 		return
 	}
 
-	query = "INSERT INTO fiscal_years (start_date, end_date, closed) VALUES ($1, $2, $3) RETURNING id"
+	query = "INSERT INTO fiscal_years (start_date, end_date, closed) VALUES (DATE($1), DATE($2), $3) RETURNING id"
 	err = w.db.QueryRowContext(ctx, w.db.Rebind(query), fiscalYear.StartDate, fiscalYear.EndDate, fiscalYear.Closed).Scan(&fiscalYear.ID)
 
 	if err != nil {
