@@ -556,6 +556,8 @@ func (w *writer) StoreTransactionTx(tx sql.Tx, ctx context.Context, userID uuid.
 	}
 
 	for _, row := range transaction.Data {
+		var isBankTransaction bool
+
 		if row.Amount == 0 {
 			continue
 		}
@@ -573,7 +575,7 @@ func (w *writer) StoreTransactionTx(tx sql.Tx, ctx context.Context, userID uuid.
 			journalAmount += row.Amount
 		}
 
-		isBankTransaction, err := w.reader.IsBankAccount(ctx, row.AccountID)
+		isBankTransaction, err = w.reader.IsBankAccount(ctx, row.AccountID)
 		if err != nil {
 			err = errors.PropagateWithCode(err, EcodeStoreTransactionFailed, "Failed on check bank transaction")
 			return
