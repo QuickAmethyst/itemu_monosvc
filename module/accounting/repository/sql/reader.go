@@ -16,6 +16,8 @@ type Reader interface {
 	GetAllAccountClasses(ctx context.Context, stmt AccountClassStatement) (result []domain.AccountClass, err error)
 	GetAccountClass(ctx context.Context, stmt AccountClassStatement) (accountClass domain.AccountClass, err error)
 	GetAccountClassByID(ctx context.Context, id int64) (accountClass domain.AccountClass, err error)
+	GetAccountClassTransactionByID(ctx context.Context, id int64, p qb.Paging) (transactions []TransactionRow, paging qb.Paging, err error)
+	GetAccountClassTransactionByIDTotalAmount(ctx context.Context, id int64) (totalAmount float64, err error)
 
 	GetAllAccountTypes(ctx context.Context) (result []domain.AccountClassType)
 	GetAccountClassTypeByID(ctx context.Context, id int64) (accountClassType domain.AccountClassType)
@@ -57,12 +59,76 @@ type reader struct {
 	db sql.DB
 }
 
+func (r *reader) GetAccountClassTransactionByIDTotalAmount(ctx context.Context, id int64) (totalAmount float64, err error) {
+	query := `
+		SELECT SUM(gl.amount)
+		FROM
+			general_ledgers gl,
+			accounts acc,
+			account_groups accgroup,
+			account_classes accclass,
+			journals j
+		WHERE
+			gl.account_id = acc.id AND
+			acc.group_id = accgroup.id AND
+			accgroup.class_id = accclass.id AND
+			j.id = gl.journal_id AND
+			j.deleted_at IS NULL AND
+			accclass.id = ?
+	`
+
+	if err = r.db.QueryRowContext(ctx, query, id).Scan(&totalAmount); err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetAccountClassTransactionFailed, "Failed on get account class transaction detail")
+		return
+	}
+
+	return
+}
+
+func (r *reader) GetAccountClassTransactionByID(ctx context.Context, id int64, p qb.Paging) (transactions []TransactionRow, paging qb.Paging, err error) {
+	paging = p
+	paging.Normalize()
+	limitClause, limitClauseArgs := paging.BuildQuery()
+
+	transactions = make([]TransactionRow, 0)
+
+	query := fmt.Sprintf(`
+		SELECT acc.id, SUM(gl.amount), j.trans_date
+		FROM
+			general_ledgers gl,
+			accounts acc,
+			account_groups accgroup,
+			account_classes accclass,
+			journals j
+		WHERE
+			gl.account_id = acc.id AND
+			acc.group_id = accgroup.id AND
+			accgroup.class_id = accclass.id AND
+			j.id = gl.journal_id AND
+			j.deleted_at IS NULL AND
+			accclass.id = ?
+		GROUP BY
+			acc.id
+		ORDER BY
+		    acc.id, j.trans_date
+		%s
+	`, limitClause)
+
+	args := append([]interface{}{id}, limitClauseArgs...)
+	if err = r.db.SelectContext(ctx, &transactions, query, args...); err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetAccountClassTransactionFailed, "Failed on get account class transactions")
+		return
+	}
+
+	return
+}
+
 func (r *reader) GetAllBankTransactionsByJournalID(ctx context.Context, journalID uuid.UUID) (bankTransactions []domain.BankTransaction, err error) {
 	bankTransactions = make([]domain.BankTransaction, 0)
 
 	whereClause, whereClauseArgs, err := qb.NewWhereClause(BankTransactionStatement{JournalID: journalID})
 	if err != nil {
-		err = errors.PropagateWithCode(err, EcodeGetAllBankTransactionsFailed, "Failed on build where clause")
+		err = errors.PropagateWithCode(err, EcodeBuildQueryFailed, "Failed on build where clause")
 		return
 	}
 

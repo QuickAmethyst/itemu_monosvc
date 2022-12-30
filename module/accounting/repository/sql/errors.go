@@ -56,4 +56,6 @@ const (
 	EcodeGetAllGeneralLedgersFailed
 	EcodeGetAllBankTransactionsFailed
 	EcodeVoidBankTransactionProhibited
+	EcodeBuildQueryFailed
+	EcodeGetAccountClassTransactionFailed
 )

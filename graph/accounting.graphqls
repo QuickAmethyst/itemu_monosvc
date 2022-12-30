@@ -1,6 +1,7 @@
 extend type Query {
     accountClasses: [AccountClass!]! @authenticated
     accountClass(input: AccountClassInput!): AccountClass! @authenticated
+    accountClassTransactionByID(id: Int!, input: AccountClassTransactionIDInput): AccountClassTransactionResult! @authenticated
 
     accountClassTypes: AccountClassTypesResult! @authenticated
     accountClassType(input: AccountClassTypeInput!): AccountClassType! @authenticated
@@ -139,6 +140,10 @@ input AccountClassTypeInput {
     id: ID!
 }
 
+input AccountClassTransactionIDInput {
+    paging: PagingInput
+}
+
 type AccountClassType {
     id: ID!
     name: String!
@@ -230,4 +235,14 @@ type BankAccountTypesResult {
 type BankAccountsResult {
     data: [BankAccount!]!
     paging: Paging!
+}
+
+type TransactionRow {
+    accountID: ID!
+    amount: Float!
+}
+
+type AccountClassTransactionResult {
+    data: [TransactionRow!]!
+    totalAmount: Float! @goField(forceResolver: true)
 }
