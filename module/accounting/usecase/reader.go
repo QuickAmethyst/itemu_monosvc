@@ -11,8 +11,7 @@ type Reader interface {
 	GetAllAccountClasses(ctx context.Context, stmt sql.AccountClassStatement) (result []domain.AccountClass, err error)
 	GetAccountClass(ctx context.Context, stmt sql.AccountClassStatement) (accountClass domain.AccountClass, err error)
 	GetAccountClassByID(ctx context.Context, id int64) (accountClass domain.AccountClass, err error)
-	GetAccountClassTransactionByID(ctx context.Context, id int64, p qb.Paging) (transactions []sql.TransactionRow, paging qb.Paging, err error)
-	GetAccountClassTransactionByIDTotalAmount(ctx context.Context, id int64) (totalAmount float64, err error)
+	GetAccountClassBalanceByID(ctx context.Context, id int64) (balance float64, err error)
 
 	GetAllAccountTypes(ctx context.Context) (result []domain.AccountClassType)
 	GetAccountClassTypeByID(ctx context.Context, id int64) (accountClassType domain.AccountClassType)
@@ -25,6 +24,7 @@ type Reader interface {
 	GetAllAccounts(ctx context.Context, stmt sql.AccountStatement) (result []domain.Account, err error)
 	GetAccount(ctx context.Context, stmt sql.AccountStatement) (account domain.Account, err error)
 	GetAccountByID(ctx context.Context, id int64) (account domain.Account, err error)
+	GetAccountBalanceByID(ctx context.Context, id int64) (balance float64, err error)
 
 	GetAllGeneralLedgerPreferences(ctx context.Context, stmt sql.GeneralLedgerPreferenceStatement) (preferences []domain.GeneralLedgerPreference, err error)
 
@@ -39,12 +39,12 @@ type reader struct {
 	AccountingSQL sql.SQL
 }
 
-func (r *reader) GetAccountClassTransactionByID(ctx context.Context, id int64, p qb.Paging) (transactions []sql.TransactionRow, paging qb.Paging, err error) {
-	return r.AccountingSQL.GetAccountClassTransactionByID(ctx, id, p)
+func (r *reader) GetAccountClassBalanceByID(ctx context.Context, id int64) (balance float64, err error) {
+	return r.AccountingSQL.GetAccountClassBalanceByID(ctx, id)
 }
 
-func (r *reader) GetAccountClassTransactionByIDTotalAmount(ctx context.Context, id int64) (totalAmount float64, err error) {
-	return r.AccountingSQL.GetAccountClassTransactionByIDTotalAmount(ctx, id)
+func (r *reader) GetAccountBalanceByID(ctx context.Context, id int64) (balance float64, err error) {
+	return r.AccountingSQL.GetAccountBalanceByID(ctx, id)
 }
 
 func (r *reader) GetAllBankAccountTypes(ctx context.Context) (bankAccountTypes []domain.BankAccountType) {

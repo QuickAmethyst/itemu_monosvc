@@ -16,8 +16,7 @@ type Reader interface {
 	GetAllAccountClasses(ctx context.Context, stmt AccountClassStatement) (result []domain.AccountClass, err error)
 	GetAccountClass(ctx context.Context, stmt AccountClassStatement) (accountClass domain.AccountClass, err error)
 	GetAccountClassByID(ctx context.Context, id int64) (accountClass domain.AccountClass, err error)
-	GetAccountClassTransactionByID(ctx context.Context, id int64, p qb.Paging) (transactions []TransactionRow, paging qb.Paging, err error)
-	GetAccountClassTransactionByIDTotalAmount(ctx context.Context, id int64) (totalAmount float64, err error)
+	GetAccountClassBalanceByID(ctx context.Context, id int64) (balance float64, err error)
 
 	GetAllAccountTypes(ctx context.Context) (result []domain.AccountClassType)
 	GetAccountClassTypeByID(ctx context.Context, id int64) (accountClassType domain.AccountClassType)
@@ -30,6 +29,7 @@ type Reader interface {
 	GetAccount(ctx context.Context, stmt AccountStatement) (account domain.Account, err error)
 	GetAccountByID(ctx context.Context, id int64) (account domain.Account, err error)
 	AccountHasTransaction(ctx context.Context, id int64) (hasTransaction bool, err error)
+	GetAccountBalanceByID(ctx context.Context, id int64) (balance float64, err error)
 
 	ValidatePreferences(ctx context.Context, preferences []domain.GeneralLedgerPreference) (err error)
 	GetAllGeneralLedgerPreferences(ctx context.Context, stmt GeneralLedgerPreferenceStatement) (preferences []domain.GeneralLedgerPreference, err error)
@@ -49,7 +49,7 @@ type Reader interface {
 	GetBankAccountBalanceByID(ctx context.Context, id int64) (balance float64, err error)
 	GetAllBankTransactionsByJournalID(ctx context.Context, journalID uuid.UUID) (bankTransactions []domain.BankTransaction, err error)
 
-	GetGeneralLedger(ctx context.Context, stmt GeneralLedgerStatement) (generalLedger domain.GeneralLedger, err error)
+	GetGeneralLedgerByAccountID(ctx context.Context, accountID int64, p qb.Paging) (gls []domain.GeneralLedger, paging qb.Paging, err error)
 	GetAllGeneralLedgersByJournalID(ctx context.Context, journalID uuid.UUID) (gls []domain.GeneralLedger, err error)
 
 	GetJournalByID(ctx context.Context, id uuid.UUID) (journal domain.Journal, err error)
@@ -59,9 +59,9 @@ type reader struct {
 	db sql.DB
 }
 
-func (r *reader) GetAccountClassTransactionByIDTotalAmount(ctx context.Context, id int64) (totalAmount float64, err error) {
-	query := `
-		SELECT SUM(gl.amount)
+func (r *reader) GetAccountClassBalanceByID(ctx context.Context, id int64) (balance float64, err error) {
+	query := fmt.Sprintf(`
+		SELECT COALESCE(SUM(gl.amount), 0)
 		FROM
 			general_ledgers gl,
 			accounts acc,
@@ -75,48 +75,32 @@ func (r *reader) GetAccountClassTransactionByIDTotalAmount(ctx context.Context, 
 			j.id = gl.journal_id AND
 			j.deleted_at IS NULL AND
 			accclass.id = ?
-	`
+	`)
 
-	if err = r.db.QueryRowContext(ctx, query, id).Scan(&totalAmount); err != nil {
-		err = errors.PropagateWithCode(err, EcodeGetAccountClassTransactionFailed, "Failed on get account class transaction detail")
+	if err = r.db.QueryRowContext(ctx, r.db.Rebind(query), id).Scan(&balance); err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetAccountClassBalanceFailed, "Failed on get account class balance")
 		return
 	}
 
 	return
 }
 
-func (r *reader) GetAccountClassTransactionByID(ctx context.Context, id int64, p qb.Paging) (transactions []TransactionRow, paging qb.Paging, err error) {
-	paging = p
-	paging.Normalize()
-	limitClause, limitClauseArgs := paging.BuildQuery()
-
-	transactions = make([]TransactionRow, 0)
-
-	query := fmt.Sprintf(`
-		SELECT acc.id, SUM(gl.amount), j.trans_date
+func (r *reader) GetAccountBalanceByID(ctx context.Context, id int64) (balance float64, err error) {
+	query := `
+		SELECT SUM(gl.amount)
 		FROM
 			general_ledgers gl,
 			accounts acc,
-			account_groups accgroup,
-			account_classes accclass,
 			journals j
 		WHERE
 			gl.account_id = acc.id AND
-			acc.group_id = accgroup.id AND
-			accgroup.class_id = accclass.id AND
 			j.id = gl.journal_id AND
 			j.deleted_at IS NULL AND
-			accclass.id = ?
-		GROUP BY
-			acc.id
-		ORDER BY
-		    acc.id, j.trans_date
-		%s
-	`, limitClause)
+			acc.id = ?
+	`
 
-	args := append([]interface{}{id}, limitClauseArgs...)
-	if err = r.db.SelectContext(ctx, &transactions, query, args...); err != nil {
-		err = errors.PropagateWithCode(err, EcodeGetAccountClassTransactionFailed, "Failed on get account class transactions")
+	if err = r.db.QueryRowContext(ctx, r.db.Rebind(query), id).Scan(&balance); err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetAccountBalanceFailed, "Failed on get account balance")
 		return
 	}
 
@@ -212,12 +196,12 @@ func (r *reader) GetJournal(ctx context.Context, stmt JournalStatement) (journal
 }
 
 func (r *reader) AccountHasTransaction(ctx context.Context, id int64) (hasTransaction bool, err error) {
-	gl, err := r.GetGeneralLedger(ctx, GeneralLedgerStatement{AccountID: id})
-	if err != nil && err != sql.ErrNoRows {
+	_, p, err := r.GetGeneralLedgerByAccountID(ctx, id, qb.Paging{CurrentPage: 1, PageSize: 1})
+	if err != nil {
 		return
 	}
 
-	if accountHasTransaction := gl.AccountID == id; accountHasTransaction {
+	if accountHasTransaction := p.Total > 0; accountHasTransaction {
 		hasTransaction = true
 		return
 	}
@@ -225,16 +209,29 @@ func (r *reader) AccountHasTransaction(ctx context.Context, id int64) (hasTransa
 	return
 }
 
-func (r *reader) GetGeneralLedger(ctx context.Context, stmt GeneralLedgerStatement) (generalLedger domain.GeneralLedger, err error) {
-	whereClause, whereClauseArgs, err := qb.NewWhereClause(stmt)
+func (r *reader) GetGeneralLedgerByAccountID(ctx context.Context, id int64, p qb.Paging) (gls []domain.GeneralLedger, paging qb.Paging, err error) {
+	gls = make([]domain.GeneralLedger, 0)
+
+	paging = p
+	paging.Normalize()
+
+	limitClause, limitClauseArgs := paging.BuildQuery()
+	whereClause, whereClauseArgs, err := qb.NewWhereClause(GeneralLedgerStatement{AccountID: id})
 	if err != nil {
 		err = errors.PropagateWithCode(err, EcodeGetGeneralLedgerFailed, "Failed on get general ledger")
 		return
 	}
 
-	query := fmt.Sprintf("SELECT id, journal_id, account_id, amount, created_by FROM general_ledgers %s", whereClause)
-	if err = r.db.GetContext(ctx, &generalLedger, r.db.Rebind(query), whereClauseArgs...); err != nil {
+	query := fmt.Sprintf("SELECT id, journal_id, account_id, amount, created_by FROM general_ledgers %s %s", whereClause, limitClause)
+	args := append(whereClauseArgs, limitClauseArgs...)
+	if err = r.db.SelectContext(ctx, &gls, r.db.Rebind(query), args...); err != nil {
 		err = errors.PropagateWithCode(err, EcodeGetGeneralLedgerFailed, "Failed on get general ledger")
+		return
+	}
+
+	query = fmt.Sprintf("SELECT COUNT(*) FROM general_ledgers %s", whereClause)
+	if err = r.db.GetContext(ctx, &paging.Total, r.db.Rebind(query), whereClauseArgs...); err != nil {
+		err = errors.PropagateWithCode(err, EcodeGetBankAccountListFailed, "Failed on count general ledger")
 		return
 	}
 
@@ -421,11 +418,19 @@ func (r *reader) GetAllAccounts(ctx context.Context, stmt AccountStatement) (res
 	}
 
 	query := "SELECT accounts.id, accounts.name, accounts.group_id, accounts.inactive FROM accounts"
-	if stmt.ClassType > 0 {
+	if stmt.ClassType > 0 || stmt.AccountClassID > 0 {
 		query += ", account_groups, account_classes"
 		query += " WHERE accounts.group_id = account_groups.id AND account_groups.class_id = account_classes.id"
+	}
+
+	if stmt.ClassType > 0 {
 		query += " AND account_classes.type_id = ? AND"
 		whereClauseArgs = append(whereClauseArgs, stmt.ClassType)
+	}
+
+	if stmt.AccountClassID > 0 {
+		query += " AND account_classes.id = ? AND"
+		whereClauseArgs = append(whereClauseArgs, stmt.AccountClassID)
 	}
 
 	if strings.HasSuffix(query, "AND") && whereClause == "" {
@@ -603,7 +608,7 @@ func (r *reader) ValidatePreferences(ctx context.Context, preferences []domain.G
 
 func (r *reader) GetBalanceSheetAmount(ctx context.Context, startDate time.Time, endDate time.Time) (amount float64, err error) {
 	query := `
-		SELECT SUM(gl.amount)
+		SELECT COALESCE(SUM(gl.amount), 0)
 		FROM general_ledgers gl, journals j, accounts acc, account_groups accGrp, account_classes accCls
 		WHERE
 			gl.journal_id = j.id AND

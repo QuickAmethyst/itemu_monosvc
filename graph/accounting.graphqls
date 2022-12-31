@@ -1,7 +1,6 @@
 extend type Query {
     accountClasses: [AccountClass!]! @authenticated
     accountClass(input: AccountClassInput!): AccountClass! @authenticated
-    accountClassTransactionByID(id: Int!, input: AccountClassTransactionIDInput): AccountClassTransactionResult! @authenticated
 
     accountClassTypes: AccountClassTypesResult! @authenticated
     accountClassType(input: AccountClassTypeInput!): AccountClassType! @authenticated
@@ -155,6 +154,8 @@ type AccountClass {
     typeID: Int!
     inactive: Boolean
     type: AccountClassType!
+    balance: Float! @goField(forceResolver: true)
+    accounts: [Account!]!
 }
 
 type AccountClassTypesResult {
@@ -178,6 +179,7 @@ type Account {
     groupID: Int!
     inactive: Boolean!
     group: AccountGroup!
+    balance: Float! @goField(forceResolver: true)
 }
 
 type Journal {
@@ -235,14 +237,4 @@ type BankAccountTypesResult {
 type BankAccountsResult {
     data: [BankAccount!]!
     paging: Paging!
-}
-
-type TransactionRow {
-    accountID: ID!
-    amount: Float!
-}
-
-type AccountClassTransactionResult {
-    data: [TransactionRow!]!
-    totalAmount: Float! @goField(forceResolver: true)
 }

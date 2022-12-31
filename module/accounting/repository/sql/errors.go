@@ -58,4 +58,6 @@ const (
 	EcodeVoidBankTransactionProhibited
 	EcodeBuildQueryFailed
 	EcodeGetAccountClassTransactionFailed
+	EcodeGetAccountBalanceFailed
+	EcodeGetAccountClassBalanceFailed
 )

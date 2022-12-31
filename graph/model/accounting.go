@@ -250,13 +250,3 @@ type WriteBankTransactionInput struct {
 type AccountClassTransactionIDInput struct {
 	Paging *PagingInput `json:"paging"`
 }
-
-type AccountClassTransactionResult struct {
-	Data        []*TransactionRow `json:"data"`
-	TotalAmount float64           `json:"totalAmount"`
-}
-
-type TransactionRow struct {
-	AccountID int64   `json:"accountID"`
-	Amount    float64 `json:"amount"`
-}

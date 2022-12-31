@@ -39,7 +39,6 @@ type Config struct {
 type ResolverRoot interface {
 	Account() AccountResolver
 	AccountClass() AccountClassResolver
-	AccountClassTransactionResult() AccountClassTransactionResultResolver
 	AccountGroup() AccountGroupResolver
 	BankAccount() BankAccountResolver
 	GeneralLedgerPreference() GeneralLedgerPreferenceResolver
@@ -53,6 +52,7 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Account struct {
+		Balance  func(childComplexity int) int
 		Group    func(childComplexity int) int
 		GroupID  func(childComplexity int) int
 		ID       func(childComplexity int) int
@@ -61,16 +61,13 @@ type ComplexityRoot struct {
 	}
 
 	AccountClass struct {
+		Accounts func(childComplexity int) int
+		Balance  func(childComplexity int) int
 		ID       func(childComplexity int) int
 		Inactive func(childComplexity int) int
 		Name     func(childComplexity int) int
 		Type     func(childComplexity int) int
 		TypeID   func(childComplexity int) int
-	}
-
-	AccountClassTransactionResult struct {
-		Data        func(childComplexity int) int
-		TotalAmount func(childComplexity int) int
 	}
 
 	AccountClassType struct {
@@ -187,26 +184,20 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Account                     func(childComplexity int, input model.AccountInput) int
-		AccountClass                func(childComplexity int, input model.AccountClassInput) int
-		AccountClassTransactionByID func(childComplexity int, id int, input *model.AccountClassTransactionIDInput) int
-		AccountClassType            func(childComplexity int, input model.AccountClassTypeInput) int
-		AccountClassTypes           func(childComplexity int) int
-		AccountClasses              func(childComplexity int) int
-		AccountGroup                func(childComplexity int, input model.AccountGroupInput) int
-		AccountGroups               func(childComplexity int, input *model.AccountGroupInput) int
-		Accounts                    func(childComplexity int, input *model.AccountInput) int
-		BankAccount                 func(childComplexity int, input model.BankAccountInput) int
-		BankAccountTypes            func(childComplexity int) int
-		BankAccounts                func(childComplexity int, input *model.BankAccountsInput) int
-		FiscalYears                 func(childComplexity int, input *model.FiscalYearsInput) int
-		GeneralLedgerPreferences    func(childComplexity int, input *model.GeneralLedgerPreferenceInput) int
-		Uoms                        func(childComplexity int, input *model.UomsInput) int
-	}
-
-	TransactionRow struct {
-		AccountID func(childComplexity int) int
-		Amount    func(childComplexity int) int
+		Account                  func(childComplexity int, input model.AccountInput) int
+		AccountClass             func(childComplexity int, input model.AccountClassInput) int
+		AccountClassType         func(childComplexity int, input model.AccountClassTypeInput) int
+		AccountClassTypes        func(childComplexity int) int
+		AccountClasses           func(childComplexity int) int
+		AccountGroup             func(childComplexity int, input model.AccountGroupInput) int
+		AccountGroups            func(childComplexity int, input *model.AccountGroupInput) int
+		Accounts                 func(childComplexity int, input *model.AccountInput) int
+		BankAccount              func(childComplexity int, input model.BankAccountInput) int
+		BankAccountTypes         func(childComplexity int) int
+		BankAccounts             func(childComplexity int, input *model.BankAccountsInput) int
+		FiscalYears              func(childComplexity int, input *model.FiscalYearsInput) int
+		GeneralLedgerPreferences func(childComplexity int, input *model.GeneralLedgerPreferenceInput) int
+		Uoms                     func(childComplexity int, input *model.UomsInput) int
 	}
 
 	Uom struct {
@@ -224,12 +215,12 @@ type ComplexityRoot struct {
 
 type AccountResolver interface {
 	Group(ctx context.Context, obj *model.Account) (*model.AccountGroup, error)
+	Balance(ctx context.Context, obj *model.Account) (float64, error)
 }
 type AccountClassResolver interface {
 	Type(ctx context.Context, obj *model.AccountClass) (*model.AccountClassType, error)
-}
-type AccountClassTransactionResultResolver interface {
-	TotalAmount(ctx context.Context, obj *model.AccountClassTransactionResult) (float64, error)
+	Balance(ctx context.Context, obj *model.AccountClass) (float64, error)
+	Accounts(ctx context.Context, obj *model.AccountClass) ([]*model.Account, error)
 }
 type AccountGroupResolver interface {
 	Parent(ctx context.Context, obj *model.AccountGroup) (*model.AccountGroup, error)
@@ -269,7 +260,6 @@ type MutationResolver interface {
 type QueryResolver interface {
 	AccountClasses(ctx context.Context) ([]*model.AccountClass, error)
 	AccountClass(ctx context.Context, input model.AccountClassInput) (*model.AccountClass, error)
-	AccountClassTransactionByID(ctx context.Context, id int, input *model.AccountClassTransactionIDInput) (*model.AccountClassTransactionResult, error)
 	AccountClassTypes(ctx context.Context) (*model.AccountClassTypesResult, error)
 	AccountClassType(ctx context.Context, input model.AccountClassTypeInput) (*model.AccountClassType, error)
 	AccountGroups(ctx context.Context, input *model.AccountGroupInput) ([]*model.AccountGroup, error)
@@ -298,6 +288,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	ec := executionContext{nil, e}
 	_ = ec
 	switch typeName + "." + field {
+
+	case "Account.balance":
+		if e.complexity.Account.Balance == nil {
+			break
+		}
+
+		return e.complexity.Account.Balance(childComplexity), true
 
 	case "Account.group":
 		if e.complexity.Account.Group == nil {
@@ -334,6 +331,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Account.Name(childComplexity), true
 
+	case "AccountClass.accounts":
+		if e.complexity.AccountClass.Accounts == nil {
+			break
+		}
+
+		return e.complexity.AccountClass.Accounts(childComplexity), true
+
+	case "AccountClass.balance":
+		if e.complexity.AccountClass.Balance == nil {
+			break
+		}
+
+		return e.complexity.AccountClass.Balance(childComplexity), true
+
 	case "AccountClass.id":
 		if e.complexity.AccountClass.ID == nil {
 			break
@@ -368,20 +379,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.AccountClass.TypeID(childComplexity), true
-
-	case "AccountClassTransactionResult.data":
-		if e.complexity.AccountClassTransactionResult.Data == nil {
-			break
-		}
-
-		return e.complexity.AccountClassTransactionResult.Data(childComplexity), true
-
-	case "AccountClassTransactionResult.totalAmount":
-		if e.complexity.AccountClassTransactionResult.TotalAmount == nil {
-			break
-		}
-
-		return e.complexity.AccountClassTransactionResult.TotalAmount(childComplexity), true
 
 	case "AccountClassType.id":
 		if e.complexity.AccountClassType.ID == nil {
@@ -983,18 +980,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.AccountClass(childComplexity, args["input"].(model.AccountClassInput)), true
 
-	case "Query.accountClassTransactionByID":
-		if e.complexity.Query.AccountClassTransactionByID == nil {
-			break
-		}
-
-		args, err := ec.field_Query_accountClassTransactionByID_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.AccountClassTransactionByID(childComplexity, args["id"].(int), args["input"].(*model.AccountClassTransactionIDInput)), true
-
 	case "Query.accountClassType":
 		if e.complexity.Query.AccountClassType == nil {
 			break
@@ -1123,20 +1108,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Uoms(childComplexity, args["input"].(*model.UomsInput)), true
-
-	case "TransactionRow.accountID":
-		if e.complexity.TransactionRow.AccountID == nil {
-			break
-		}
-
-		return e.complexity.TransactionRow.AccountID(childComplexity), true
-
-	case "TransactionRow.amount":
-		if e.complexity.TransactionRow.Amount == nil {
-			break
-		}
-
-		return e.complexity.TransactionRow.Amount(childComplexity), true
 
 	case "Uom.decimal":
 		if e.complexity.Uom.Decimal == nil {
@@ -1274,7 +1245,6 @@ var sources = []*ast.Source{
 	{Name: "../accounting.graphqls", Input: `extend type Query {
     accountClasses: [AccountClass!]! @authenticated
     accountClass(input: AccountClassInput!): AccountClass! @authenticated
-    accountClassTransactionByID(id: Int!, input: AccountClassTransactionIDInput): AccountClassTransactionResult! @authenticated
 
     accountClassTypes: AccountClassTypesResult! @authenticated
     accountClassType(input: AccountClassTypeInput!): AccountClassType! @authenticated
@@ -1428,6 +1398,8 @@ type AccountClass {
     typeID: Int!
     inactive: Boolean
     type: AccountClassType!
+    balance: Float! @goField(forceResolver: true)
+    accounts: [Account!]!
 }
 
 type AccountClassTypesResult {
@@ -1451,6 +1423,7 @@ type Account {
     groupID: Int!
     inactive: Boolean!
     group: AccountGroup!
+    balance: Float! @goField(forceResolver: true)
 }
 
 type Journal {
@@ -1508,16 +1481,6 @@ type BankAccountTypesResult {
 type BankAccountsResult {
     data: [BankAccount!]!
     paging: Paging!
-}
-
-type TransactionRow {
-    accountID: ID!
-    amount: Float!
-}
-
-type AccountClassTransactionResult {
-    data: [TransactionRow!]!
-    totalAmount: Float! @goField(forceResolver: true)
 }
 `, BuiltIn: false},
 	{Name: "../auth.graphqls", Input: `extend type Mutation {
@@ -1957,30 +1920,6 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_accountClassTransactionByID_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 int
-	if tmp, ok := rawArgs["id"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["id"] = arg0
-	var arg1 *model.AccountClassTransactionIDInput
-	if tmp, ok := rawArgs["input"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-		arg1, err = ec.unmarshalOAccountClassTransactionIDInput2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassTransactionIDInput(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["input"] = arg1
 	return args, nil
 }
 
@@ -2425,6 +2364,50 @@ func (ec *executionContext) fieldContext_Account_group(ctx context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Account_balance(ctx context.Context, field graphql.CollectedField, obj *model.Account) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Account_balance(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Account().Balance(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Account_balance(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Account",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AccountClass_id(ctx context.Context, field graphql.CollectedField, obj *model.AccountClass) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_AccountClass_id(ctx, field)
 	if err != nil {
@@ -2648,8 +2631,8 @@ func (ec *executionContext) fieldContext_AccountClass_type(ctx context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _AccountClassTransactionResult_data(ctx context.Context, field graphql.CollectedField, obj *model.AccountClassTransactionResult) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_AccountClassTransactionResult_data(ctx, field)
+func (ec *executionContext) _AccountClass_balance(ctx context.Context, field graphql.CollectedField, obj *model.AccountClass) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AccountClass_balance(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -2662,57 +2645,7 @@ func (ec *executionContext) _AccountClassTransactionResult_data(ctx context.Cont
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Data, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*model.TransactionRow)
-	fc.Result = res
-	return ec.marshalNTransactionRow2ᚕᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐTransactionRowᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_AccountClassTransactionResult_data(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AccountClassTransactionResult",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "accountID":
-				return ec.fieldContext_TransactionRow_accountID(ctx, field)
-			case "amount":
-				return ec.fieldContext_TransactionRow_amount(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type TransactionRow", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AccountClassTransactionResult_totalAmount(ctx context.Context, field graphql.CollectedField, obj *model.AccountClassTransactionResult) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_AccountClassTransactionResult_totalAmount(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.AccountClassTransactionResult().TotalAmount(rctx, obj)
+		return ec.resolvers.AccountClass().Balance(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2729,14 +2662,72 @@ func (ec *executionContext) _AccountClassTransactionResult_totalAmount(ctx conte
 	return ec.marshalNFloat2float64(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_AccountClassTransactionResult_totalAmount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_AccountClass_balance(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "AccountClassTransactionResult",
+		Object:     "AccountClass",
 		Field:      field,
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AccountClass_accounts(ctx context.Context, field graphql.CollectedField, obj *model.AccountClass) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AccountClass_accounts(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.AccountClass().Accounts(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Account)
+	fc.Result = res
+	return ec.marshalNAccount2ᚕᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AccountClass_accounts(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AccountClass",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Account_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Account_name(ctx, field)
+			case "groupID":
+				return ec.fieldContext_Account_groupID(ctx, field)
+			case "inactive":
+				return ec.fieldContext_Account_inactive(ctx, field)
+			case "group":
+				return ec.fieldContext_Account_group(ctx, field)
+			case "balance":
+				return ec.fieldContext_Account_balance(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Account", field.Name)
 		},
 	}
 	return fc, nil
@@ -3161,6 +3152,10 @@ func (ec *executionContext) fieldContext_AccountGroup_class(ctx context.Context,
 				return ec.fieldContext_AccountClass_inactive(ctx, field)
 			case "type":
 				return ec.fieldContext_AccountClass_type(ctx, field)
+			case "balance":
+				return ec.fieldContext_AccountClass_balance(ctx, field)
+			case "accounts":
+				return ec.fieldContext_AccountClass_accounts(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AccountClass", field.Name)
 		},
@@ -3540,6 +3535,8 @@ func (ec *executionContext) fieldContext_BankAccount_account(ctx context.Context
 				return ec.fieldContext_Account_inactive(ctx, field)
 			case "group":
 				return ec.fieldContext_Account_group(ctx, field)
+			case "balance":
+				return ec.fieldContext_Account_balance(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Account", field.Name)
 		},
@@ -4662,6 +4659,8 @@ func (ec *executionContext) fieldContext_GeneralLedgerPreference_account(ctx con
 				return ec.fieldContext_Account_inactive(ctx, field)
 			case "group":
 				return ec.fieldContext_Account_group(ctx, field)
+			case "balance":
+				return ec.fieldContext_Account_balance(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Account", field.Name)
 		},
@@ -4914,6 +4913,10 @@ func (ec *executionContext) fieldContext_Mutation_storeAccountClass(ctx context.
 				return ec.fieldContext_AccountClass_inactive(ctx, field)
 			case "type":
 				return ec.fieldContext_AccountClass_type(ctx, field)
+			case "balance":
+				return ec.fieldContext_AccountClass_balance(ctx, field)
+			case "accounts":
+				return ec.fieldContext_AccountClass_accounts(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AccountClass", field.Name)
 		},
@@ -5001,6 +5004,10 @@ func (ec *executionContext) fieldContext_Mutation_updateAccountClassByID(ctx con
 				return ec.fieldContext_AccountClass_inactive(ctx, field)
 			case "type":
 				return ec.fieldContext_AccountClass_type(ctx, field)
+			case "balance":
+				return ec.fieldContext_AccountClass_balance(ctx, field)
+			case "accounts":
+				return ec.fieldContext_AccountClass_accounts(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AccountClass", field.Name)
 		},
@@ -5424,6 +5431,8 @@ func (ec *executionContext) fieldContext_Mutation_storeAccount(ctx context.Conte
 				return ec.fieldContext_Account_inactive(ctx, field)
 			case "group":
 				return ec.fieldContext_Account_group(ctx, field)
+			case "balance":
+				return ec.fieldContext_Account_balance(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Account", field.Name)
 		},
@@ -5511,6 +5520,8 @@ func (ec *executionContext) fieldContext_Mutation_updateAccountByID(ctx context.
 				return ec.fieldContext_Account_inactive(ctx, field)
 			case "group":
 				return ec.fieldContext_Account_group(ctx, field)
+			case "balance":
+				return ec.fieldContext_Account_balance(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Account", field.Name)
 		},
@@ -6702,6 +6713,10 @@ func (ec *executionContext) fieldContext_Query_accountClasses(ctx context.Contex
 				return ec.fieldContext_AccountClass_inactive(ctx, field)
 			case "type":
 				return ec.fieldContext_AccountClass_type(ctx, field)
+			case "balance":
+				return ec.fieldContext_AccountClass_balance(ctx, field)
+			case "accounts":
+				return ec.fieldContext_AccountClass_accounts(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AccountClass", field.Name)
 		},
@@ -6778,6 +6793,10 @@ func (ec *executionContext) fieldContext_Query_accountClass(ctx context.Context,
 				return ec.fieldContext_AccountClass_inactive(ctx, field)
 			case "type":
 				return ec.fieldContext_AccountClass_type(ctx, field)
+			case "balance":
+				return ec.fieldContext_AccountClass_balance(ctx, field)
+			case "accounts":
+				return ec.fieldContext_AccountClass_accounts(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AccountClass", field.Name)
 		},
@@ -6790,87 +6809,6 @@ func (ec *executionContext) fieldContext_Query_accountClass(ctx context.Context,
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_accountClass_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_accountClassTransactionByID(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_accountClassTransactionByID(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		directive0 := func(rctx context.Context) (interface{}, error) {
-			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.Query().AccountClassTransactionByID(rctx, fc.Args["id"].(int), fc.Args["input"].(*model.AccountClassTransactionIDInput))
-		}
-		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.Authenticated == nil {
-				return nil, errors.New("directive authenticated is not implemented")
-			}
-			return ec.directives.Authenticated(ctx, nil, directive0)
-		}
-
-		tmp, err := directive1(rctx)
-		if err != nil {
-			return nil, graphql.ErrorOnPath(ctx, err)
-		}
-		if tmp == nil {
-			return nil, nil
-		}
-		if data, ok := tmp.(*model.AccountClassTransactionResult); ok {
-			return data, nil
-		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/QuickAmethyst/monosvc/graph/model.AccountClassTransactionResult`, tmp)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.AccountClassTransactionResult)
-	fc.Result = res
-	return ec.marshalNAccountClassTransactionResult2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassTransactionResult(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Query_accountClassTransactionByID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "data":
-				return ec.fieldContext_AccountClassTransactionResult_data(ctx, field)
-			case "totalAmount":
-				return ec.fieldContext_AccountClassTransactionResult_totalAmount(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type AccountClassTransactionResult", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_accountClassTransactionByID_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return
 	}
@@ -7281,6 +7219,8 @@ func (ec *executionContext) fieldContext_Query_accounts(ctx context.Context, fie
 				return ec.fieldContext_Account_inactive(ctx, field)
 			case "group":
 				return ec.fieldContext_Account_group(ctx, field)
+			case "balance":
+				return ec.fieldContext_Account_balance(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Account", field.Name)
 		},
@@ -7368,6 +7308,8 @@ func (ec *executionContext) fieldContext_Query_account(ctx context.Context, fiel
 				return ec.fieldContext_Account_inactive(ctx, field)
 			case "group":
 				return ec.fieldContext_Account_group(ctx, field)
+			case "balance":
+				return ec.fieldContext_Account_balance(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Account", field.Name)
 		},
@@ -7995,94 +7937,6 @@ func (ec *executionContext) fieldContext_Query___schema(ctx context.Context, fie
 				return ec.fieldContext___Schema_directives(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type __Schema", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _TransactionRow_accountID(ctx context.Context, field graphql.CollectedField, obj *model.TransactionRow) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_TransactionRow_accountID(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.AccountID, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int64)
-	fc.Result = res
-	return ec.marshalNID2int64(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_TransactionRow_accountID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TransactionRow",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ID does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _TransactionRow_amount(ctx context.Context, field graphql.CollectedField, obj *model.TransactionRow) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_TransactionRow_amount(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Amount, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(float64)
-	fc.Result = res
-	return ec.marshalNFloat2float64(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_TransactionRow_amount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TransactionRow",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -11055,6 +10909,26 @@ func (ec *executionContext) _Account(ctx context.Context, sel ast.SelectionSet, 
 				return innerFunc(ctx)
 
 			})
+		case "balance":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Account_balance(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -11121,35 +10995,7 @@ func (ec *executionContext) _AccountClass(ctx context.Context, sel ast.Selection
 				return innerFunc(ctx)
 
 			})
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
-var accountClassTransactionResultImplementors = []string{"AccountClassTransactionResult"}
-
-func (ec *executionContext) _AccountClassTransactionResult(ctx context.Context, sel ast.SelectionSet, obj *model.AccountClassTransactionResult) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, accountClassTransactionResultImplementors)
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("AccountClassTransactionResult")
-		case "data":
-
-			out.Values[i] = ec._AccountClassTransactionResult_data(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
-		case "totalAmount":
+		case "balance":
 			field := field
 
 			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
@@ -11158,7 +11004,27 @@ func (ec *executionContext) _AccountClassTransactionResult(ctx context.Context, 
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._AccountClassTransactionResult_totalAmount(ctx, field, obj)
+				res = ec._AccountClass_balance(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
+		case "accounts":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._AccountClass_accounts(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -12154,29 +12020,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			out.Concurrently(i, func() graphql.Marshaler {
 				return rrm(innerCtx)
 			})
-		case "accountClassTransactionByID":
-			field := field
-
-			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_accountClassTransactionByID(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
-			}
-
-			out.Concurrently(i, func() graphql.Marshaler {
-				return rrm(innerCtx)
-			})
 		case "accountClassTypes":
 			field := field
 
@@ -12465,41 +12308,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				return ec._Query___schema(ctx, field)
 			})
 
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
-
-var transactionRowImplementors = []string{"TransactionRow"}
-
-func (ec *executionContext) _TransactionRow(ctx context.Context, sel ast.SelectionSet, obj *model.TransactionRow) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, transactionRowImplementors)
-	out := graphql.NewFieldSet(fields)
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("TransactionRow")
-		case "accountID":
-
-			out.Values[i] = ec._TransactionRow_accountID(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "amount":
-
-			out.Values[i] = ec._TransactionRow_amount(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -13026,20 +12834,6 @@ func (ec *executionContext) marshalNAccountClass2ᚖgithubᚗcomᚋQuickAmethyst
 func (ec *executionContext) unmarshalNAccountClassInput2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassInput(ctx context.Context, v interface{}) (model.AccountClassInput, error) {
 	res, err := ec.unmarshalInputAccountClassInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNAccountClassTransactionResult2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassTransactionResult(ctx context.Context, sel ast.SelectionSet, v model.AccountClassTransactionResult) graphql.Marshaler {
-	return ec._AccountClassTransactionResult(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNAccountClassTransactionResult2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassTransactionResult(ctx context.Context, sel ast.SelectionSet, v *model.AccountClassTransactionResult) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._AccountClassTransactionResult(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNAccountClassType2githubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassType(ctx context.Context, sel ast.SelectionSet, v model.AccountClassType) graphql.Marshaler {
@@ -13643,60 +13437,6 @@ func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel as
 	return res
 }
 
-func (ec *executionContext) marshalNTransactionRow2ᚕᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐTransactionRowᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.TransactionRow) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNTransactionRow2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐTransactionRow(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNTransactionRow2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐTransactionRow(ctx context.Context, sel ast.SelectionSet, v *model.TransactionRow) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._TransactionRow(ctx, sel, v)
-}
-
 func (ec *executionContext) unmarshalNUint2uint(ctx context.Context, v interface{}) (uint, error) {
 	res, err := graphql.UnmarshalUint(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -14126,14 +13866,6 @@ func (ec *executionContext) marshalOAccountClass2ᚖgithubᚗcomᚋQuickAmethyst
 		return graphql.Null
 	}
 	return ec._AccountClass(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalOAccountClassTransactionIDInput2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountClassTransactionIDInput(ctx context.Context, v interface{}) (*model.AccountClassTransactionIDInput, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputAccountClassTransactionIDInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOAccountGroup2ᚖgithubᚗcomᚋQuickAmethystᚋmonosvcᚋgraphᚋmodelᚐAccountGroup(ctx context.Context, sel ast.SelectionSet, v *model.AccountGroup) graphql.Marshaler {

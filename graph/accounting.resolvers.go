@@ -37,6 +37,21 @@ func (r *accountResolver) Group(ctx context.Context, obj *model.Account) (*model
 	}, nil
 }
 
+// Balance is the resolver for the balance field.
+func (r *accountResolver) Balance(ctx context.Context, obj *model.Account) (float64, error) {
+	if obj == nil {
+		return 0, nil
+	}
+
+	balance, err := r.AccountingUsecase.GetAccountBalanceByID(ctx, obj.ID)
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return 0, sdkGraphql.NewError(err, libErr.RootCause(err).Error(), libErr.GetCode(err))
+	}
+
+	return balance, nil
+}
+
 // Type is the resolver for the type field.
 func (r *accountClassResolver) Type(ctx context.Context, obj *model.AccountClass) (*model.AccountClassType, error) {
 	accountClassType := r.AccountingUsecase.GetAccountClassTypeByID(ctx, obj.TypeID)
@@ -46,19 +61,44 @@ func (r *accountClassResolver) Type(ctx context.Context, obj *model.AccountClass
 	}, nil
 }
 
-// TotalAmount is the resolver for the totalAmount field.
-func (r *accountClassTransactionResultResolver) TotalAmount(ctx context.Context, obj *model.AccountClassTransactionResult) (float64, error) {
-	if len(obj.Data) == 0 {
+// Balance is the resolver for the balance field.
+func (r *accountClassResolver) Balance(ctx context.Context, obj *model.AccountClass) (float64, error) {
+	if obj == nil {
 		return 0, nil
 	}
 
-	totalAmount, err := r.AccountingUsecase.GetAccountClassTransactionByIDTotalAmount(ctx, obj.Data[0].AccountID)
+	balance, err := r.AccountingUsecase.GetAccountClassBalanceByID(ctx, obj.ID)
 	if err != nil {
 		r.Logger.Error(err.Error())
 		return 0, sdkGraphql.NewError(err, libErr.RootCause(err).Error(), libErr.GetCode(err))
 	}
 
-	return totalAmount, nil
+	return balance, nil
+}
+
+// Accounts is the resolver for the accounts field.
+func (r *accountClassResolver) Accounts(ctx context.Context, obj *model.AccountClass) ([]*model.Account, error) {
+	if obj == nil {
+		return nil, nil
+	}
+
+	accounts, err := r.AccountingUsecase.GetAllAccounts(ctx, sql.AccountStatement{AccountClassID: obj.ID})
+	if err != nil {
+		r.Logger.Error(err.Error())
+		return nil, sdkGraphql.NewError(err, libErr.RootCause(err).Error(), libErr.GetCode(err))
+	}
+
+	result := make([]*model.Account, len(accounts))
+	for i, account := range accounts {
+		result[i] = &model.Account{
+			ID:       account.ID,
+			Name:     account.Name,
+			GroupID:  account.GroupID,
+			Inactive: account.Inactive,
+		}
+	}
+
+	return result, nil
 }
 
 // Parent is the resolver for the parent field.
@@ -538,34 +578,6 @@ func (r *queryResolver) AccountClass(ctx context.Context, input model.AccountCla
 	}, nil
 }
 
-// AccountClassTransactionByID is the resolver for the accountClassTransactionByID field.
-func (r *queryResolver) AccountClassTransactionByID(ctx context.Context, id int, input *model.AccountClassTransactionIDInput) (*model.AccountClassTransactionResult, error) {
-	var paging qb.Paging
-
-	if input != nil && input.Paging != nil {
-		paging = qb.Paging{
-			CurrentPage: input.Paging.CurrentPage,
-			PageSize:    input.Paging.PageSize,
-		}
-	}
-
-	transactions, paging, err := r.AccountingUsecase.GetAccountClassTransactionByID(ctx, int64(id), paging)
-	if err != nil {
-		r.Logger.Error(err.Error())
-		return nil, sdkGraphql.NewError(err, libErr.RootCause(err).Error(), libErr.GetCode(err))
-	}
-
-	data := make([]*model.TransactionRow, len(transactions))
-	for i, transaction := range transactions {
-		data[i] = &model.TransactionRow{
-			AccountID: transaction.AccountID,
-			Amount:    transaction.Amount,
-		}
-	}
-
-	return &model.AccountClassTransactionResult{Data: data}, nil
-}
-
 // AccountClassTypes is the resolver for the accountClassTypes field.
 func (r *queryResolver) AccountClassTypes(ctx context.Context) (*model.AccountClassTypesResult, error) {
 	result := make([]model.AccountClassType, 0)
@@ -826,11 +838,6 @@ func (r *Resolver) Account() generated.AccountResolver { return &accountResolver
 // AccountClass returns generated.AccountClassResolver implementation.
 func (r *Resolver) AccountClass() generated.AccountClassResolver { return &accountClassResolver{r} }
 
-// AccountClassTransactionResult returns generated.AccountClassTransactionResultResolver implementation.
-func (r *Resolver) AccountClassTransactionResult() generated.AccountClassTransactionResultResolver {
-	return &accountClassTransactionResultResolver{r}
-}
-
 // AccountGroup returns generated.AccountGroupResolver implementation.
 func (r *Resolver) AccountGroup() generated.AccountGroupResolver { return &accountGroupResolver{r} }
 
@@ -844,7 +851,6 @@ func (r *Resolver) GeneralLedgerPreference() generated.GeneralLedgerPreferenceRe
 
 type accountResolver struct{ *Resolver }
 type accountClassResolver struct{ *Resolver }
-type accountClassTransactionResultResolver struct{ *Resolver }
 type accountGroupResolver struct{ *Resolver }
 type bankAccountResolver struct{ *Resolver }
 type generalLedgerPreferenceResolver struct{ *Resolver }
